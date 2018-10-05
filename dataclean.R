@@ -16,17 +16,15 @@ tcol    <-    hour(hmscol)*60 +
               minute(hmscol)  + 
               second(hmscol)/60 ; head(tcol)
 
-nytid <- c(0)
+pricevec <- c(0)
 n <- 1
 i <- 1
 repeat{
-  if ( ceiling(tcol[n]) < ceiling(tcol[n+1])) {
-   nytid[i] <- testdata$price[n]
+  if ( ceiling(tcol[n]) < ceiling(tcol[n+1]) ){
+   pricevec[i] <- testdata$price[n]
    i <- i +1
   }
   n <- n + 1
-  if (n == length(tcol)){stop("Den er blevet stoppet")}
+  if (n == length(tcol) ){stop("Du er nået enden")}
 }
-nytid
-k <- c(1,3) ; k
-k[3] <- 5 ; k
+pricevec
