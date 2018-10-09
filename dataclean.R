@@ -9,7 +9,7 @@ dat$hms <- hms(dat$utcsec) ; tail(dat)
 
 library(lubridate)
 library(tidyverse)
-
+library(microbenchmark)
 
 tcol    <-    hour(dat$hms)*60   + 
               minute(dat$hms)    + 
@@ -55,29 +55,23 @@ tail(cldat)
 cldat
 
 n <- i <- 1
-
+microbenchmark(
 repeat{
   if(minute(dat$hms[n]) < minute(dat$hms[n+1]) ){
     avgPlace <- n
-    avgDenom <- 1
-    avgNumerat <- dat$price[n]
     
     while(second(dat$hms[avgPlace]) == second(dat$hms[avgPlace-1]) &&
           avgPlace > 1) {
-      # Denne while-løkke vil nok ikke fungere hvis der kun er én
-      # observation i det første minut.
-      avgNumerat <- avgNumerat + dat$price[avgPlace]
-      avgDenom <- avgDenom + 1
       avgPlace <- avgPlace - 1
     }  
-    if(avgDenom == 1){
+    if(avgPlace < n){
       cldat[i,1] <- dat$utcsec[n]
       cldat[i,2] <- dat$price[n]
       i <- i + 1
     }
     else{
       cldat[i,1] <- dat$utcsec[n]
-      cldat[i,2] <- avgNumerat/avgDenom
+      cldat[i,2] <- sum(dat$price[avgPlace:n])/(n-avgPlace+1)
       i <- i + 1
     } 
   }
@@ -86,6 +80,7 @@ repeat{
     cldat <- cldat[1:i-1,]
     stop("Du er nået enden. Tillykke!")}
 }
+)
 head(cldat)
 tail(cldat)
 cldat
