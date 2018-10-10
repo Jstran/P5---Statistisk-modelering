@@ -10,6 +10,7 @@ dat$hms <- hms(dat$utcsec) ; tail(dat)
 library(lubridate)
 library(tidyverse)
 library(microbenchmark)
+library(tictoc)
 
 tcol    <-    hour(dat$hms)*60   + 
               minute(dat$hms)    + 
@@ -21,8 +22,7 @@ secvec   <- second(dat$hms)
 last <- length(dat$utcsec)
 n <- i <- 1
 
-system.time(
-  repeat{
+repeat{
     if(floorvec[n] < floorvec[n+1] ){
       avgPlace <- n
       while(secvec[avgPlace] == secvec[avgPlace-1] &&
@@ -42,10 +42,6 @@ system.time(
     }
     n <- n + 1
     if (n == last ){
-      cldat_v3 <- cldat[1:i-1,]
-      stop("Du er nået enden. Tillykke!")}
-  }
-)  
-head(cldat)
-tail(cldat)
-nrow(cldat)
+      cldat <- cldat[1:i-1,]
+      stop("Du er nået enden. Tillykke!") }
+}
