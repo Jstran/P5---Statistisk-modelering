@@ -21,7 +21,14 @@ microbenchmark(
   
   mincol[1]         == mincol[2],
   mincol[1]         <  mincol[2],
+  
+  ceiling(tiddeci[1]) == ceiling(tiddeci[2]),
+  ceiling(tiddeci[1]) <  ceiling(tiddeci[2]),
+  
+  floor(tiddeci[1])   == floor(tiddeci[2]),
+  floor(tiddeci[1])   < floor(tiddeci[2]),
+  
   unit = "ms"
 )
-# Hvis vi skal bruge minute() og sådan, skal der vektorene bare laves på forhånd. Så er evalueringerne hurtige
-
+# Hvis vi skal bruge minute() og sådan, skal vektorene bare laves på forhånd. Så er evalueringerne hurtige.
+# Floor vektor kan også laves på forhånd. Så er den fandme hurtig.
