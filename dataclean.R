@@ -1,8 +1,8 @@
 ## Forsøg på at rense data
 
-setwd("C:/Users/jonat/Desktop/R Kode/P5/P5---Statistisk-modelering")
+#setwd("C:/Users/jonat/Desktop/R Kode/P5/P5---Statistisk-modelering")
 
-dat <- read.csv("p5data/TROW/TROW_20081028.csv")
+dat <- read.csv("TROW_20081028.csv")
 keepRows <- c("utcsec" , "price" , "volume")
 dat <- dat[keepRows] ; tail(dat)
 dat$hms <- hms(dat$utcsec) ; tail(dat)
@@ -85,3 +85,34 @@ head(cldat)
 tail(cldat)
 cldat
 
+
+
+cldat_v2 <- dat[c("utcsec","price")]
+n <- i <- 1
+system.time(
+  repeat{
+    if(floor(tcol[n]) < floor(tcol[n+1]) ){
+      avgPlace <- n
+      while(second(dat$hms[avgPlace]) == second(dat$hms[avgPlace-1]) &&
+            avgPlace > 1) {
+        avgPlace <- avgPlace - 1
+      }  
+      if(avgPlace == n){
+        cldat_v2[i,1] <- dat$utcsec[n]
+        cldat_v2[i,2] <- dat$price[n]
+        i <- i + 1
+      }
+      else{
+        cldat_v2[i,1] <- dat$utcsec[n]
+        cldat_v2[i,2] <- sum(dat$price[avgPlace:n])/(n-avgPlace+1)
+        i <- i + 1
+      }
+    }
+    n <- n + 1
+    if (n == length(dat$utcsec) ){
+      cldat_v2 <- cldat_v2[1:i-1,]
+      stop("Du er nået enden. Tillykke!")}
+  }
+)  
+head(cldat_v2)
+nrow(cldat_v2)
