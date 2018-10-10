@@ -10,7 +10,6 @@ dat$hms <- hms(dat$utcsec) ; tail(dat)
 library(lubridate)
 library(tidyverse)
 library(microbenchmark)
-library(tictoc)
 
 tcol    <-    hour(dat$hms)*60   + 
               minute(dat$hms)    + 
@@ -45,3 +44,5 @@ repeat{
       cldat <- cldat[1:i-1,]
       stop("Du er nået enden. Tillykke!") }
 }
+
+# Løkke med ?list.dirs og list.files til at ændre filer for alle aktier og alle dage
