@@ -116,3 +116,41 @@ system.time(
 )  
 head(cldat_v2)
 nrow(cldat_v2)
+
+
+
+
+
+cldat_v3 <- dat[c("utcsec","price")] ; head(cldat_v3)
+floorvec <- floor(tcol)
+secvec   <- second(dat$hms)
+last <- length(dat$utcsec)
+n <- i <- 1
+system.time(
+  repeat{
+    if(floorvec[n] < floorvec[n+1] ){
+      avgPlace <- n
+      while(secvec[avgPlace] == secvec[avgPlace-1] &&
+            avgPlace > 1) {
+        avgPlace <- avgPlace - 1
+      }  
+      if(avgPlace == n){
+        cldat_v3[i,1] <- dat$utcsec[n]
+        cldat_v3[i,2] <- dat$price[n]
+        i <- i + 1
+      }
+      else{
+        cldat_v3[i,1] <- dat$utcsec[n]
+        cldat_v3[i,2] <- sum(dat$price[avgPlace:n])/(n-avgPlace+1)
+        i <- i + 1
+      }
+    }
+    n <- n + 1
+    if (n == last ){
+      cldat_v3 <- cldat_v3[1:i-1,]
+      stop("Du er nået enden. Tillykke!")}
+  }
+)  
+head(cldat_v3)
+tail(cldat_v3)
+nrow(cldat_v3)
