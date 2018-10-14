@@ -122,7 +122,8 @@ for(dirloop in 1:nDir){
   nCsv <- length(csvvec)
   for (csvloop in 1:nCsv){
     
-    dat <- read.csv(csvvec[csvloop])
+    #dat <- read.csv(csvvec[csvloop])
+    dat <- read.csv("ACAS_19990104.csv")
     keepRows <- c("utcsec" , "price")
     dat <- dat[keepRows] ; tail(dat)
     dat$hms <- hms(dat$utcsec) ; tail(dat)
@@ -166,10 +167,53 @@ for(dirloop in 1:nDir){
   }
 }
 
+# n er pos i data der undersøges. i er pos der indsættes i clean data og k er pos i minutetimevec
+n <- i <- k <- 1
+last <- length(dat$utcsec)
+pricevec <- numeric(391)
+repeat{
+  while(floorvec[n] < 570 ){ # Klokken er mindre end 09:30
+    n <- n + 1
+  }
+  while(floorvec[n] == minutetimevec[k]){ # Problemer hvis der ikke er data fra 9:30
+  n <- n + 1
+  }
+  avgPlace <- n - 1
+  while(secvec[avgPlace] == secvec[avgPlace-1] &&
+        avgPlace > 1) {
+    avgPlace <- avgPlace - 1
+  }
+  avgPrice <- sum(dat$price[avgPlace:n-1])/(n-avgPlace+1) # Skal undersøges om den udregner rigtigt nu
+  if(floorvec[n] == minutetimevec[k+1]){
+    if(avgPlace == n - 1){
+      pricevec[i] <- dat$price[n]
+    }
+    else{
+      pricevec[i] <- avgPrice
+    }
+    i <- i + 1
+    k <- k + 1
+  }
+  else{
+    while(floorvec[n] > minutetimevec[k]){
+      if(avgPlace == n - 1){
+        pricevec[i] <- dat$price[n]
+      }
+      else{
+        pricevec[i] <- avgPrice
+      }
+      i <- i + 1
+      k <- k + 1
+    }
+    
+  }
+  if(n == last | floorvec[n] > 959){break}
+}
 
+pricevec
 
-pricevec <- numeric(391) ; tail(pricevec)
-
+k
+n
 
 x <- data.frame(y = c(5,6), z = c(8,9)); x
 prices <- c(10,12)
@@ -178,5 +222,7 @@ x[,3] <- prices ; x
 names(x)[3] <- paste(datonavn) ; x
 
 # Tidsvektor
-format(seq(as.POSIXct("2013-01-01 09:30:00", tz="GMT"), 
-           length.out=391, by='1 min'), '%H:%M')
+timevec       <- format(seq(as.POSIXct("2013-01-01 09:30:00", tz="GMT"), 
+                 length.out=391, by='1 min'), '%H:%M')
+minutetimevec <- hour(hm(timevec))*60 + minute(hm(timevec))
+minutetimevec
