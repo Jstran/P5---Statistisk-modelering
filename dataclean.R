@@ -123,7 +123,9 @@ for(dirloop in 1:nDir){
   for (csvloop in 1:nCsv){
     
     #dat <- read.csv(csvvec[csvloop])
-    dat <- read.csv("ACAS_19990104.csv")
+    ##
+    dat <- read.csv("./p5data/TROW/TROW_20080701.csv")
+    ##
     keepRows <- c("utcsec" , "price")
     dat <- dat[keepRows] ; tail(dat)
     dat$hms <- hms(dat$utcsec) ; tail(dat)
@@ -171,6 +173,7 @@ for(dirloop in 1:nDir){
 n <- i <- k <- 1
 last <- length(dat$utcsec)
 pricevec <- numeric(391)
+system.time(
 repeat{
   while(floorvec[n] < 570 ){ # Klokken er mindre end 09:30
     n <- n + 1
@@ -209,7 +212,7 @@ repeat{
   }
   if(n == last | floorvec[n] > 959){break}
 }
-
+)
 pricevec
 
 k
