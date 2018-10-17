@@ -108,12 +108,7 @@ for(dirloop in 1:nDir){
       avgPrice <- sum(dat$price[avgPlace:(n-1)])/(n-avgPlace) # Skal undersøges om den udregner rigtigt nu
       
       if(floorvec[n] == minutetimevec[k+1]){ # 391 er længden af minutetimevec
-        if(avgPlace == n - 1){
-          pricevec[i] <- dat$price[avgPlace]
-        }
-        else{
           pricevec[i] <- avgPrice
-        }
         i <- i + 1
         k <- k + 1
       }
@@ -135,8 +130,10 @@ for(dirloop in 1:nDir){
     
       }
       if(n == last | i == 392){
+        avgPlace <- n
+        avgPrice <- sum(dat$price[avgPlace:(n)])/(n + 1 - avgPlace)
         while(i < 392){
-        pricevec[i] <- pricevec[i-1]
+        pricevec[i] <- avgPrice
         i <- i + 1
         }
         break
@@ -148,21 +145,5 @@ for(dirloop in 1:nDir){
     names(cldat)[csvloop + 1] <- date
 
   } # Slut paa csv loekke.
-
+write.csv( cldat , file = file.path(cldirvec[dirloop] , paste(basename(cldirvec[dirloop]),".csv")) )
 } # Slut paa dir loekke.
-
-
-x <- data.frame(y = c(5,6), z = c(8,9)); x
-prices <- c(10,12)
-datonavn <- "19990204"
-x[,3] <- prices ; x
-names(x)[3] <- paste(datonavn) ; x
-
-
-n
-k
-i
-csvloop
-head(floorvec)
-head(dat)
-head(minutetimevec)
