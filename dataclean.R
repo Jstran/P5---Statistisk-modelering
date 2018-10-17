@@ -10,6 +10,7 @@ setwd("C:/Users/jonat/Desktop/R Kode/P5/P5---Statistisk-modelering")
 timevec       <- format(seq(as.POSIXct("2013-01-01 09:30:00", tz="GMT"), 
                             length.out=391, by='1 min'), '%H:%M')
 minutetimevec <- hour(hm(timevec))*60 + minute(hm(timevec))
+minutetimevec <- c(minutetimevec , 961)
 
 
 # Vector of directory paths to directories in original data folder
@@ -62,19 +63,18 @@ for(dirloop in 1:nDir){
     last <- length(dat$utcsec)
     pricevec <- numeric(391)
 
-    if(csvloop == 1){  
+    if(csvloop == 1){ # Hvis data før 9:30, indsættes sidste observation før 9:30
       if(floorvec[1] < 570){
         while(floorvec[n] < 570){n <- n + 1}
         pricevec[1] <- dat$price[n-1]
         i <- 2
       }
-      if(floorvec[1] > 569){
+      if(floorvec[1] > 569){ # Hvis intet data før 9:30, indsættes...
        while(minutetimevec[k] < floorvec[1] + 1){
          pricevec[i] <- dat$price[1]
          k <- k + 1
          i <- i + 1
        }
-       k <- 1
       }
     }
     else{
@@ -89,7 +89,6 @@ for(dirloop in 1:nDir){
           k <- k + 1
           i <- i + 1
         }
-        k <- 1
       } 
     }
   
@@ -97,7 +96,8 @@ for(dirloop in 1:nDir){
     #  while(floorvec[n] < 570 ){ # Klokken er mindre end 09:30
     #    n <- n + 1
     #  }
-      while(floorvec[n] == minutetimevec[k]){ # Problemer hvis der ikke er data fra 9:30
+      
+      while(floorvec[n] < minutetimevec[k] + 1 & n < last){ # Problemer hvis der ikke er data fra 9:30
       n <- n + 1
       }
       avgPlace <- n - 1
@@ -107,7 +107,7 @@ for(dirloop in 1:nDir){
       }
       avgPrice <- sum(dat$price[avgPlace:(n-1)])/(n-avgPlace) # Skal undersøges om den udregner rigtigt nu
       
-      if(k < 391 && floorvec[n] == minutetimevec[k+1]){ # 391 er længden af minutetimevec
+      if(floorvec[n] == minutetimevec[k+1]){ # 391 er længden af minutetimevec
         if(avgPlace == n - 1){
           pricevec[i] <- dat$price[avgPlace]
         }
@@ -119,8 +119,11 @@ for(dirloop in 1:nDir){
       }
       else{
         while(floorvec[n] > minutetimevec[k]){
-          if(avgPlace == n - 1){
+          if(avgPlace == n - 1 & avgPlace > 0){
             pricevec[i] <- dat$price[avgPlace]
+          }
+          if(avgPlace == 0){
+            pricevec[i] <- dat$price[1]
           }
           else{
             pricevec[i] <- avgPrice
@@ -131,7 +134,13 @@ for(dirloop in 1:nDir){
         }
     
       }
-      if(n == last | i == 392){break}
+      if(n == last | i == 392){
+        while(i < 392){
+        pricevec[i] <- pricevec[i-1]
+        i <- i + 1
+        }
+        break
+      }
     }
     
     cldat[,csvloop + 1] <- pricevec
@@ -148,3 +157,12 @@ prices <- c(10,12)
 datonavn <- "19990204"
 x[,3] <- prices ; x
 names(x)[3] <- paste(datonavn) ; x
+
+
+n
+k
+i
+csvloop
+head(floorvec)
+head(dat)
+head(minutetimevec)
