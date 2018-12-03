@@ -1,0 +1,305 @@
+### (1) Introting --------------------------------------------------------
+
+# Pakker
+library(openxlsx)
+library(lubridate)
+
+# Mapper der bruges
+setwd("C:/Users/jonat/Desktop/R Kode/P5/P5---Statistisk-modelering")
+cldatdir <- "./p5dataclean"
+
+# Navne og placeringer på aktier
+csvvec <- list.files(cldatdir , full.names = 1 , recursive = 0)
+snames <- substr(basename(csvvec),1,nchar(basename(csvvec))-5)
+
+### (2) Sampling frekvens ------------------------------------------------
+
+n <- 5
+priceseq <- seq(1,391,n)
+
+### (3) Specifik aktie indlæsning ----------------------------------------
+# Kør først (1) og (2)
+
+# Valg af aktie
+k   <- 20 ; print(csvvec[k])
+dat <- read.csv(csvvec[k])
+
+# (5 min)
+pricevec <- c()
+datevec  <- c()
+
+for(i in 1:(length(dat) - 1) ){
+  pricevec <- c(pricevec , dat[priceseq,(i+1)])
+  datevec  <- c(datevec , rep(names(dat)[(i+1)],(391 + n - 1)/n) )
+}
+datevec <- ymd(substring(datevec,2))
+stock   <- data.frame(date = datevec , 
+                      price = pricevec ,
+                      return = c(0 , diff(log(pricevec)) ) )
+
+# (1 min)
+pricevec <- c()
+datevec  <- c()
+
+for(i in 1:(length(dat) - 1) ){
+  pricevec <- c(pricevec , as.numeric(dat[1:391,(i+1)]) ) 
+  datevec  <- c(datevec , rep(names(dat)[(i+1)],391) )
+}
+datevec <- ymd(substring(datevec,2))
+stock1  <- data.frame(date = datevec , 
+                      price = pricevec ,
+                      return = c(0 , diff(log(pricevec)) ) )
+
+
+### (4) SPY indlæsning ---------------------------------------------------
+# Kør først (1) og (2)
+
+# Valg af aktie
+SPYind <- 28 ; print(csvvec[SPYind])
+dat    <- read.csv(csvvec[SPYind])
+
+# (5 min)
+SPYprice <- c()
+SPYdate  <- c()
+
+for(i in 1:(length(dat) - 1) ){
+  SPYprice <- c(SPYprice , dat[priceseq,(i+1)])
+  SPYdate  <- c(SPYdate , rep(names(dat)[(i+1)],(391 + n - 1)/n) )
+}
+SPYdate <- ymd(substring(SPYdate,2))
+SPY     <- data.frame(date = SPYdate , 
+                      price = SPYprice , 
+                      return = c(0 , diff(log(SPYprice)) ) )
+
+# (1 min)
+SPYprice <- c()
+SPYdate  <- c()
+
+for(i in 1:(length(dat) - 1) ){
+  SPYprice <- c(SPYprice , as.numeric(dat[1:391,(i+1)]) ) 
+  SPYdate  <- c(SPYdate , rep(names(dat)[(i+1)],391) )
+}
+SPYdate <- ymd(substring(SPYdate , 2))
+SPY1    <- data.frame(date = SPYdate , 
+                      price = SPYprice ,
+                      return = c(0 , diff(log(SPYprice)) ) )
+
+### (5) HML og SMB indlæsning ---------------------------------------------
+
+# Mappe
+factdir <- "./factors"
+factcsv <- list.files(factdir , full.names = 1 , recursive = 0)
+
+# HML
+dat <- read.xlsx(factcsv[1])
+HML <- data.frame(date = ymd(dat$X1) , return = log(1 + dat$X3))
+HML <- HML[1:218514,]
+HML$return[1] <- 0
+  
+# SMB
+dat <- read.xlsx(factcsv[2])
+SMB <- data.frame(date = ymd(dat$X1) , return = log(1 + dat$X3))
+SMB <- SMB[1:218514,]
+SMB$return[1] <- 0
+
+### (6) Betatabel (hele perioden) -----------------------------------------
+# Kør først (1) , (2) , (4) og (5)
+
+### Beta0 skæring , beta1 SPY , beta2 SMB , beta3 HML
+betaframe <- data.frame(name   = snames ,
+                        beta0  = rep(10,36) ,
+                        beta1  = rep(10,36) ,
+                        beta2  = rep(10,36) ,
+                        beta3  = rep(10,36) ,
+                        pbeta0 = rep(10,36)) ; head(betaframe)
+
+for(k in 5:5){
+  
+  ### Priser og datoer for aktie k
+  dat <- read.csv(csvvec[k])
+  pricevec <- c()
+  datevec <- c()
+  for(i in 1:(length(dat) - 1) ){
+    pricevec <- c(pricevec,dat[priceseq,(i+1)])
+    datevec <- c(datevec , rep(names(dat)[(i+1)],(391 + n - 1)/n) )
+  }
+  datevec <- ymd(substring(datevec,2))
+  stock <- data.frame(date = datevec , 
+                      price = pricevec ,
+                      return = c(0 , diff(log(pricevec)) ) )
+  
+  ### Model
+  ttime <- 1:length(stock$return) 
+  famamod <- lm( stock$return[ttime] ~ SPY$return[ttime] + 
+                                       HML$return[ttime] + 
+                                       SMB$return[ttime])
+  
+  ### Udvaelger koefficienter til betaframe
+  for(i  in 1:4){
+    betaframe[k , i + 1] <- summary(mymodel)$coefficients[i,1]
+  }
+  betaframe[k , 6] <- summary(mymodel)$coefficients[1,4]
+  print(k)
+  print(datevec[1])
+}
+
+print(betaframe , digits = 3)
+
+### (7) P-vaerdi tabel (hele perioden) ------------------------------------ 
+# Kør først (1) , (2) , (4) og (5)
+
+pframe <- data.frame(name    = snames ,
+                     pbeta0  = rep(10,36) ,
+                     pSPY    = rep(10,36) ,
+                     pSMB    = rep(10,36) ,
+                     pHML    = rep(10,36)) ; head(pframe)
+
+for(k in 1:length(csvvec)){
+  
+  ### Priser og datoer for aktie k
+  dat <- read.csv(csvvec[k])
+  pricevec <- c()
+  datevec <- c()
+  for(i in 1:(length(dat) - 1) ){
+    pricevec <- c(pricevec,dat[priceseq,(i+1)])
+    datevec <- c(datevec , rep(names(dat)[(i+1)],(391 + n - 1)/n) )
+  }
+  datevec <- ymd(substring(datevec,2))
+  stock <- data.frame(date = datevec , 
+                      price = pricevec ,
+                      return = c(0 , diff(log(pricevec)) ) )
+  
+  ### Model
+  ttime <- 1:length(stock$return) 
+  famamod <- lm( stock$return[ttime] ~ SPY$return[ttime] + 
+                                       HML$return[ttime] + 
+                                       SMB$return[ttime])
+  
+  ### Udvaelger koefficienter til betaframe
+  for(i  in 1:4){
+    pframe[k , i + 1] <- summary(mymodel)$coefficients[i,4]
+  }
+  print(k)
+}
+ 
+print(pframe , digits = 5)
+
+insignSPY <- snames[pframe$pSPY > 0.05] ; insignSPY
+insignSMB <- snames[pframe$pSMB > 0.05] ; insignSMB
+insignHML <- snames[pframe$pHML > 0.05] ; insignHML
+
+### (8) Naiv portefølje model --------------------------------------------
+# Kør først (1) , (2) , (4) og (5)
+
+# Laver naiv portefølje data.frame
+allstock <- data.frame(numeric(218435))
+j <- 1
+datevec <- c()
+for(k in (1:36)[!1:36 %in% 28]){ # Aktier uden SPY
+  dat <- read.csv(csvvec[k])
+  pricevec <- c()
+  
+  for(i in 1:(length(dat) - 1) ){
+    pricevec <- c(pricevec,dat[priceseq,(i+1)])
+  }
+  if(k == 2){
+    for(h in 1:(length(dat) - 1)){
+      datevec  <- c(datevec , rep(names(dat)[(h+1)],391) )  
+      
+    }
+    datevec <- ymd(substring(datevec,2))
+  }
+  
+  allstock[,j] <- pricevec[1:218435]
+  names(allstock)[j] <- snames[k]
+  j <- j + 1
+  print(k)
+}
+naiveport <- data.frame(date = datevec[1:218434] ,
+                        return = diff(log(rowSums(allstock))))
+
+# Undersøger lineær model baseret på naiv portefølje 
+betaSMB <- c()
+beta0 <- c()
+for(y in 1999:2009){
+  for(m in 1:12){
+    ttime <- year(naiveport$date) == y & 
+             month(naiveport$date) == m 
+    famamod <- lm( naiveport$return[ttime] ~ 
+                     SPY$return[c(ttime,rep(FALSE , 80))] +
+                     HML$return[c(ttime,rep(FALSE , 80))] +
+                     SMB$return[c(ttime,rep(FALSE , 80))])
+    
+    betaSMB <- c(betaSMB , as.numeric(mymodel$coefficients[4]) )
+    beta0 <- c(beta0 , summary(famamod)$coefficients[1,4])
+  }
+}
+
+### (9) CAPM -------------------------------------------------------------
+# Kør først (1) , (2) og (4)
+
+# Forkorter SPY1 til at passe med korteste aktie
+SPY1 <- SPY1[1:1081114,]
+
+# Laver naiv portefølje data.frame
+allstock <- data.frame(numeric(1081115)) # Længde af korteste aktie
+j <- 1
+datevec <- c()
+for(k in (1:36)[!1:36 %in% 28]){ # Aktier uden SPY
+  dat <- read.csv(csvvec[k])
+  pricevec <- c()
+  
+  for(i in 1:(length(dat) - 1) ){
+    pricevec <- c(pricevec , as.numeric(dat[1:391,(i+1)]) )
+  }
+  if(k == 2){
+    for(h in 1:(length(dat) - 1)){
+      datevec  <- c(datevec , rep(names(dat)[(h+1)],391) )  
+    
+      }
+    datevec <- ymd(substring(datevec,2))
+  }
+  allstock[,j] <- pricevec[1:1081115]
+  names(allstock)[j] <- snames[k]
+  j <- j + 1
+  print(k)
+}
+
+# CAPM model over hele perioden
+naiveport1 <- data.frame(date   = datevec[1:length(datevec)-1] ,
+                         return = diff(log(rowSums(allstock))))
+
+capmmod <- lm(naiveport1$return ~ SPY1$return)
+summary(capmmod)
+
+betaSMB <- c()
+beta0 <- c()
+for(y in 1999:2009){
+  for(m in 1:12){
+    ttime <- year(naiveport$date) == y & month(naiveport$date) == m 
+    famamod <- lm( naiveport$return[ttime] ~ 
+                   SPY$return[c(ttime,rep(FALSE , 80))] +
+                   HML$return[c(ttime,rep(FALSE , 80))] +
+                   SMB$return[c(ttime,rep(FALSE , 80))])
+    
+    betaSMB <- c(betaSMB , as.numeric(mymodel$coefficients[4]) )
+    beta0 <- c(beta0 , summary(famamod)$coefficients[1,4])
+  }
+}
+
+### (10) TEST -------------------------------------------------------------
+betaSMB <- c()
+beta0 <- c()
+for(y in 1999:2009){
+  for(m in 1:12){
+    ttime <- year(stock$date) == y & month(stock$date) == m 
+    famamod <- lm( stock$return[ttime] ~ SPY$return[ttime] + 
+                                         HML$return[ttime] + 
+                                         SMB$return[ttime])
+    
+    betaSMB <- c(betaSMB , as.numeric(mymodel$coefficients[4]) )
+    beta0 <- c(beta0 , summary(famamod)$coefficients[1,4])
+  }
+}
+
+
