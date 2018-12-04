@@ -1,4 +1,4 @@
-### (1) Introting --------------------------------------------------------
+### (1) Introting ---------------------------------------------------
 
 # Pakker
 library(openxlsx)
@@ -12,12 +12,12 @@ cldatdir <- "./p5dataclean"
 csvvec <- list.files(cldatdir , full.names = 1 , recursive = 0)
 snames <- substr(basename(csvvec),1,nchar(basename(csvvec))-5)
 
-### (2) Sampling frekvens ------------------------------------------------
+### (2) Sampling frekvens -------------------------------------------
 
 n <- 5
 priceseq <- seq(1,391,n)
 
-### (3) Specifik aktie indlæsning ----------------------------------------
+### (3) Specifik aktie indlæsning -----------------------------------
 # Kør først (1) og (2)
 
 # Valg af aktie
@@ -51,7 +51,7 @@ stock1  <- data.frame(date = datevec ,
                       return = c(0 , diff(log(pricevec)) ) )
 
 
-### (4) SPY indlæsning ---------------------------------------------------
+### (4) SPY indlæsning ----------------------------------------------
 # Kør først (1) og (2)
 
 # Valg af aktie
@@ -84,7 +84,7 @@ SPY1    <- data.frame(date = SPYdate ,
                       price = SPYprice ,
                       return = c(0 , diff(log(SPYprice)) ) )
 
-### (5) HML og SMB indlæsning ---------------------------------------------
+### (5) HML og SMB indlæsning ---------------------------------------
 
 # Mappe
 factdir <- "./factors"
@@ -102,7 +102,7 @@ SMB <- data.frame(date = ymd(dat$X1) , return = log(1 + dat$X3))
 SMB <- SMB[1:218514,]
 SMB$return[1] <- 0
 
-### (6) Betatabel (hele perioden) -----------------------------------------
+### (6) Betatabel (hele perioden) -----------------------------------
 # Kør først (1) , (2) , (4) og (5)
 
 ### Beta0 skæring , beta1 SPY , beta2 SMB , beta3 HML
@@ -145,7 +145,7 @@ for(k in 5:5){
 
 print(betaframe , digits = 3)
 
-### (7) P-vaerdi tabel (hele perioden) ------------------------------------ 
+### (7) P-vaerdi tabel (hele perioden) ------------------------------ 
 # Kør først (1) , (2) , (4) og (5)
 
 pframe <- data.frame(name    = snames ,
@@ -188,13 +188,14 @@ insignSPY <- snames[pframe$pSPY > 0.05] ; insignSPY
 insignSMB <- snames[pframe$pSMB > 0.05] ; insignSMB
 insignHML <- snames[pframe$pHML > 0.05] ; insignHML
 
-### (8) Naiv portefølje model --------------------------------------------
-# Kør først (1) , (2) , (4) og (5)
+### (8) Naiv portefølje (5 min) -------------------------------------
+# Kør først (1) og (2)
 
 # Laver naiv portefølje data.frame
 allstock <- data.frame(numeric(218435))
 j <- 1
 datevec <- c()
+
 for(k in (1:36)[!1:36 %in% 28]){ # Aktier uden SPY
   dat <- read.csv(csvvec[k])
   pricevec <- c()
@@ -202,9 +203,9 @@ for(k in (1:36)[!1:36 %in% 28]){ # Aktier uden SPY
   for(i in 1:(length(dat) - 1) ){
     pricevec <- c(pricevec,dat[priceseq,(i+1)])
   }
-  if(k == 2){
+  if(k == 2){ # Korteste aktie
     for(h in 1:(length(dat) - 1)){
-      datevec  <- c(datevec , rep(names(dat)[(h+1)],391) )  
+      datevec  <- c(datevec , rep(names(dat)[(h+1)],(391 + n - 1)/n) )  
       
     }
     datevec <- ymd(substring(datevec,2))
@@ -223,19 +224,18 @@ betaSMB <- c()
 beta0 <- c()
 for(y in 1999:2009){
   for(m in 1:12){
-    ttime <- year(naiveport$date) == y & 
-             month(naiveport$date) == m 
-    famamod <- lm( naiveport$return[ttime] ~ 
-                     SPY$return[c(ttime,rep(FALSE , 80))] +
-                     HML$return[c(ttime,rep(FALSE , 80))] +
-                     SMB$return[c(ttime,rep(FALSE , 80))])
+    ttime <- year(naiveport$date) == y & month(naiveport$date) == m 
+    famamod <- lm(naiveport$return[ttime] ~ 
+                  SPY$return[c(ttime,rep(FALSE , 80))] +
+                  HML$return[c(ttime,rep(FALSE , 80))] +
+                  SMB$return[c(ttime,rep(FALSE , 80))])
     
-    betaSMB <- c(betaSMB , as.numeric(mymodel$coefficients[4]) )
+    betaSMB <- c(betaSMB , as.numeric(famamod$coefficients[4]) )
     beta0 <- c(beta0 , summary(famamod)$coefficients[1,4])
   }
 }
 
-### (9) CAPM -------------------------------------------------------------
+### (9) CAPM --------------------------------------------------------
 # Kør først (1) , (2) og (4)
 
 # Forkorter SPY1 til at passe med korteste aktie
@@ -264,11 +264,10 @@ for(k in (1:36)[!1:36 %in% 28]){ # Aktier uden SPY
   j <- j + 1
   print(k)
 }
-
-# CAPM model over hele perioden
 naiveport1 <- data.frame(date   = datevec[1:length(datevec)-1] ,
                          return = diff(log(rowSums(allstock))))
 
+# CAPM model over hele perioden
 capmmod <- lm(naiveport1$return ~ SPY1$return)
 summary(capmmod)
 
@@ -276,26 +275,56 @@ betaSMB <- c()
 beta0 <- c()
 for(y in 1999:2009){
   for(m in 1:12){
-    ttime <- year(naiveport$date) == y & month(naiveport$date) == m 
-    famamod <- lm( naiveport$return[ttime] ~ 
-                   SPY$return[c(ttime,rep(FALSE , 80))] +
-                   HML$return[c(ttime,rep(FALSE , 80))] +
-                   SMB$return[c(ttime,rep(FALSE , 80))])
+    int <- year(naiveport$date) == y & month(naiveport$date) == m
+    int <- c(int , rep(FALSE , 80))
     
-    betaSMB <- c(betaSMB , as.numeric(mymodel$coefficients[4]) )
+    famamod <- lm( naiveport$return[int] ~ SPY$return[int] +
+                                           HML$return[int] +
+                                           SMB$return[int])
+    
+    betaSMB <- c(betaSMB , as.numeric(famamod$coefficients[4]) )
     beta0 <- c(beta0 , summary(famamod)$coefficients[1,4])
   }
 }
 
-### (10) TEST -------------------------------------------------------------
+### (10) R-adjusted CAPM vs Fama (5 min) ----------------------------
+# Kør først (1) , (2) , (4) , (5) og (8)
+
+rcapm <- rfama <- c()
+rdate <- c("1999-01-04")
+
+for(y in 1999:2009){
+  for(m in 1:12){
+    int <- year(naiveport$date) == y & month(naiveport$date) == m 
+    int <- c(int , rep(FALSE , 80))
+    
+    capmmod <- lm(naiveport$return[int] ~ SPY$return[int])
+    
+    famamod <- lm(naiveport$return[int] ~ SPY$return[int] +
+                                          HML$return[int] +
+                                          SMB$return[int])
+    rcapm <- c(rcapm , summary(capmmod)$adj.r.squared)
+    rfama <- c(rfama , summary(famamod)$adj.r.squared)
+    rdate <- c(rdate , (naiveport$date[int])[1] )
+  }
+}
+
+plot(rfama - rcapm , type = "l" , 
+                     ylim = c(-0.01 , 0.03) ,
+                     col = "blue" ,
+                     xlab = "Måneder efter 1999-01" ,
+                     ylab = "R^2 Differens (Fama - CAPM)")
+abline(h = 0)
+
+### (11) TEST -------------------------------------------------------
 betaSMB <- c()
 beta0 <- c()
 for(y in 1999:2009){
   for(m in 1:12){
-    ttime <- year(stock$date) == y & month(stock$date) == m 
-    famamod <- lm( stock$return[ttime] ~ SPY$return[ttime] + 
-                                         HML$return[ttime] + 
-                                         SMB$return[ttime])
+    int <- year(stock$date) == y & month(stock$date) == m 
+    famamod <- lm( stock$return[int] ~ SPY$return[int] + 
+                                       HML$return[int] + 
+                                       SMB$return[int])
     
     betaSMB <- c(betaSMB , as.numeric(mymodel$coefficients[4]) )
     beta0 <- c(beta0 , summary(famamod)$coefficients[1,4])
