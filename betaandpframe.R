@@ -21,8 +21,8 @@ priceseq <- seq(1,391,n)
 # Kør først (1) og (2)
 
 # Valg af aktie
-k   <- 20 ; print(csvvec[k])
-dat <- read.csv(csvvec[k])
+stockind   <- 1 ; print(csvvec[stockind])
+dat <- read.csv(csvvec[stockind])
 
 # (5 min)
 pricevec <- c()
@@ -33,9 +33,14 @@ for(i in 1:(length(dat) - 1) ){
   datevec  <- c(datevec , rep(names(dat)[(i+1)],(391 + n - 1)/n) )
 }
 datevec <- ymd(substring(datevec,2))
-stock   <- data.frame(date = datevec , 
-                      price = pricevec ,
-                      return = c(0 , diff(log(pricevec)) ) )
+stock   <- data.frame(date = datevec[2:length(datevec)] , 
+                      price = pricevec[2:length(pricevec)] ,
+                      return = diff(log(pricevec))  )
+keep <- (1:length(stock[,1]))[!1:length(stock[,1]) %in% ((1:2766)*79)]
+stock <- stock[keep,]
+
+
+
 
 # (1 min)
 pricevec <- c()
@@ -67,10 +72,13 @@ for(i in 1:(length(dat) - 1) ){
   SPYdate  <- c(SPYdate , rep(names(dat)[(i+1)],(391 + n - 1)/n) )
 }
 SPYdate <- ymd(substring(SPYdate,2))
-SPY     <- data.frame(date = SPYdate , 
-                      price = SPYprice , 
-                      return = c(0 , diff(log(SPYprice)) ) )
+SPY     <- data.frame(date = SPYdate[2:length(SPYdate)] , 
+                      price = SPYprice[2:length(SPYprice)] , 
+                      return = diff(log(SPYprice))  )
 
+keep <- (1:length(SPY[,1]))[!1:length(SPY[,1]) %in% ((1:2766)*79)]
+SPY <- SPY[keep,]
+ 
 # (1 min)
 SPYprice <- c()
 SPYdate  <- c()
@@ -88,21 +96,25 @@ SPY1    <- data.frame(date = SPYdate ,
 
 # Mappe
 factdir <- "./factors"
-factcsv <- list.files(factdir , full.names = 1 , recursive = 0)
+factcsv <- list.files(factdir , full.names = 1 , recursive = 0);factcsv
+
 
 # HML
-dat <- read.xlsx(factcsv[2])
+dat <- read.xlsx(factcsv[1])
 HML <- data.frame(date = ymd(dat$X1) , return = log(1 + dat$X3))
 #HML <- data.frame(date = ymd(dat$X1) , return = dat$X3 )
-HML <- HML[1:218514,]
-HML$return[1] <- 0
-  
+HML <- HML[2:length(HML$return),]
+
+# Til at fjerne overnight return
+keep <- (1:length(HML$return))[!1:length(HML$return) %in% ((1:2766)*79)] 
+HML <- HML[keep,]
+
 # SMB
-dat <- read.xlsx(factcsv[3])
+dat <- read.xlsx(factcsv[2])
 SMB <- data.frame(date = ymd(dat$X1) , return = log(1 + dat$X3))
 #SMB <- data.frame(date = ymd(dat$X1) , return = dat$X3 )
-SMB <- SMB[1:218514,]
-SMB$return[1] <- 0
+SMB <- SMB[2:length(SMB$return),]
+SMB <- SMB[keep,]
 
 ### (6) Betatabel (hele perioden) -----------------------------------
 # Kør først (1) , (2) , (4) og (5)
@@ -213,29 +225,15 @@ for(k in (1:36)[!1:36 %in% 28]){ # Aktier uden SPY
     datevec <- ymd(substring(datevec,2))
   }
   
-  allstock[,j] <- diff(log(pricevec))[1:218434] # FEJL
+  allstock[,j] <- diff(log(pricevec))[1:218434]
   names(allstock)[j] <- snames[k]
   j <- j + 1
   print(k)
 }
 naiveport <- data.frame(date = datevec[1:218434] ,
-                        return = (1/35) * rowSums(allstock) ) # FEJL
-
-# Undersøger lineær model baseret på naiv portefølje 
-betaSMB <- c()
-beta0 <- c()
-for(y in 1999:2009){
-  for(m in 1:12){
-    ttime <- year(naiveport$date) == y & month(naiveport$date) == m 
-    famamod <- lm(naiveport$return[ttime] ~ 
-                  SPY$return[c(ttime,rep(FALSE , 80))] +
-                  HML$return[c(ttime,rep(FALSE , 80))] +
-                  SMB$return[c(ttime,rep(FALSE , 80))])
-    
-    betaSMB <- c(betaSMB , as.numeric(famamod$coefficients[4]) )
-    beta0 <- c(beta0 , summary(famamod)$coefficients[1,4])
-  }
-}
+                        return = (1/35) * rowSums(allstock) )
+keep <- (1:length(naiveport[,1]))[!1:length(naiveport[,1]) %in% ((1:2766)*79)]
+naiveport <- naiveport[keep,]
 
 ### (9) CAPM --------------------------------------------------------
 # Kør først (1) , (2) og (4)
@@ -319,12 +317,219 @@ plot(rfama - rcapm , type = "l" ,
                      ylab = "R^2 Differens (Fama - CAPM)")
 abline(h = 0)
 
-### (11) TEST -------------------------------------------------------
+### (11) Residual plots ---------------------------------------------
+# Kør først (1) , (2) , (4) , (5) og (8)
+mns <- c("januar" , "februar" , "marts" , "april" , "maj" ,
+         "juni" , "juli" , "august" , "september" , "oktober" ,
+         "november" , "december")
+
+# Aktie model
+for(y in c(2004 , 2008) ){
+  m <- 6
+  int <- year(stock$date) == y & month(stock$date) == m 
+  int <- c(int , rep(FALSE , 70000))
+  
+  k <- length(stock$return[int])
+  ds <- length( unique( day( stock$date[int] )  ) )
+  h <- 1/(78*ds) * rep(1,k) # 1/(antal obs på måneden (78 * dage)) 
+  
+  famamod <- lm( stock$return[int] ~ h               +
+                                     SPY$return[int] + 
+                                     HML$return[int] + 
+                                     SMB$return[int] -
+                                     1)
+  
+  setEPS()
+  postscript( paste("qqresid",snames[stockind],y,0,m,".eps",sep = "") ,
+              height = 6)
+  plot(famamod , 
+       which = 2 ,             # QQplot
+       sub.caption = "" ,      # Ingen sub.caption
+       xlab = "Teoretiske kvantiler" ,
+       main = paste(snames[stockind]," - ",mns[m]," ",y,sep="" ) )
+  dev.off()
+}
+
+
+# Portefølje model
+for(y in c(2004 , 2008) ){
+  m <- 6
+  int <- year(naiveport$date) == y & month(naiveport$date) == m
+  int <- c(int , rep(FALSE , 70000)) # Fordi porteføljen er kortere
+    
+  k <- length(naiveport$return[int])
+  ds <- length( unique( day( naiveport$date[int] )  ) )
+  h <- 1/(78*ds) * rep(1,k) # 1/(antal obs på måneden (78 * dage)) 
+    
+  famamod <- lm( naiveport$return[int] ~ h               +
+                                         SPY$return[int] + 
+                                         HML$return[int] + 
+                                         SMB$return[int] -
+                                         1)
+  setEPS()
+  postscript( paste("qqresidport",y,0,m,".eps", sep = "") , height = 6)
+  plot(famamod , 
+       which = 2 ,             # QQplot
+       sub.caption = "" ,      # Ingen sub.caption
+       xlab = "Teoretiske kvantiler" ,
+       main = paste("Naiv portefølje - ",mns[m]," ",y,sep="" ) ) 
+  dev.off()
+}
+
+### (12) R^2 tabel --------------------------------------------------
+
+radjframe <- data.frame(X2004 = rep(0,36) , 
+                        X2008 = rep(0,36) , 
+                        Gns   = rep(0,36))
+row.names(radjframe) <- c(snames[(1:36)[!1:36 %in% 28]] , "Port")
+j <- 1
+for(stockind in (1:36)[!1:36 %in% 28]){
+  
+  radj <- c()
+  
+  dat <- read.csv(csvvec[stockind])
+ 
+  pricevec <- c()
+  datevec  <- c()
+  
+  for(i in 1:(length(dat) - 1) ){
+    pricevec <- c(pricevec , dat[priceseq,(i+1)])
+    datevec  <- c(datevec , rep(names(dat)[(i+1)],(391 + n - 1)/n) )
+  }
+  datevec <- ymd(substring(datevec,2))
+  stock   <- data.frame(date = datevec[2:length(datevec)] , 
+                        price = pricevec[2:length(pricevec)] ,
+                        return = diff(log(pricevec))  )
+  keep <- (1:length(stock[,1]))[!1:length(stock[,1]) %in% ((1:2766)*79)]
+  stock <- stock[keep,]
+
+  for(y in 1999:2009 ){
+    for(m in 1:12){
+      int <- year(stock$date) == y & month(stock$date) == m 
+      int <- c(int , rep(FALSE , 70000))
+    
+      k <- length(stock$return[int])
+      ds <- length( unique( day( stock$date[int] )  ) )
+      h <- 1/(78*ds) * rep(1,k) # 1/(antal obs på måneden (78 * dage)) 
+    
+      famamod <- lm( stock$return[int] ~ h               +
+                                         SPY$return[int] + 
+                                         HML$return[int] + 
+                                         SMB$return[int] -
+                                         1)
+      
+      radj <- c(radj , summary(famamod)$adj.r.squared)
+      if(m == 6){
+        if(y == 2004){
+          radjframe$X2004[j] <- summary(famamod)$adj.r.squared
+        }
+        if(y == 2008){
+          radjframe$X2008[j] <- summary(famamod)$adj.r.squared
+        }
+      }
+    }
+  }
+radjframe$Gns[j] <- mean(radj)
+print(j)
+j <- j + 1
+}
+
+radj <- c()
+for(y in 1999:2009){
+  for(m in 1:12){
+    int <- year(naiveport$date) == y & month(naiveport$date) == m
+    int <- c(int , rep(FALSE , 70000)) # Fordi porteføljen er kortere
+    
+    k <- length(naiveport$return[int])
+    ds <- length( unique( day( naiveport$date[int] )  ) )
+    h <- 1/(78*ds) * rep(1,k) # 1/(antal obs på måneden (391 * dage)) 
+    
+    famamod <- lm( naiveport$return[int] ~ h               +
+                                           SPY$return[int] + 
+                                           HML$return[int] + 
+                                           SMB$return[int] -
+                                           1)
+
+    radj <- c(radj , summary(famamod)$adj.r.squared )
+    if(m == 6){
+      if(y == 2004){
+        radjframe$X2004[j] <- summary(famamod)$adj.r.squared
+      }
+      if(y == 2008){
+        radjframe$X2008[j] <- summary(famamod)$adj.r.squared
+      }
+    }
+  }
+radjframe$Gns[j] <- mean(radj)
+}
+radjframe
+
+### (13) Skedastitetsplots ------------------------------------------
+# Kør først (1) , (2) , (3) , (4) , (5) og (8)
+mns <- c("januar" , "februar" , "marts" , "april" , "maj" ,
+         "juni" , "juli" , "august" , "september" , "oktober" ,
+         "november" , "december")
+
+# Aktie model
+for(y in c(2004 , 2008) ){
+  m <- 6
+  int <- year(stock$date) == y & month(stock$date) == m 
+  int <- c(int , rep(FALSE , 70000))
+  
+  k <- length(stock$return[int])
+  ds <- length( unique( day( stock$date[int] )  ) )
+  h <- 1/(78*ds) * rep(1,k) # 1/(antal obs på måneden (78 * dage)) 
+  
+  famamod <- lm( stock$return[int] ~ h               +
+                   SPY$return[int] + 
+                   HML$return[int] + 
+                   SMB$return[int] -
+                   1)
+  
+  #setEPS()
+  #postscript( paste("skedaresid",snames[stockind],y,0,m,".eps",sep = "") ,
+  #            height = 6)
+  plot(famamod , 
+       which = 3 ,             # Skedastisitetsplot
+       sub.caption = "" ,      # Ingen sub.caption
+       #xlab = "Fittede værdier" ,
+       main = paste(snames[stockind]," - ",mns[m]," ",y,sep="" ) )
+  #dev.off()
+}
+
+
+# Portefølje model
+for(y in c(2004 , 2008) ){
+  m <- 6
+  int <- year(naiveport$date) == y & month(naiveport$date) == m
+  int <- c(int , rep(FALSE , 70000)) # Fordi porteføljen er kortere
+  
+  k <- length(naiveport$return[int])
+  ds <- length( unique( day( naiveport$date[int] )  ) )
+  h <- 1/(78*ds) * rep(1,k) # 1/(antal obs på måneden (78 * dage)) 
+  
+  famamod <- lm( naiveport$return[int] ~ h               +
+                   SPY$return[int] + 
+                   HML$return[int] + 
+                   SMB$return[int] -
+                   1)
+  setEPS()
+  postscript( paste("skedaresidport",y,0,m,".eps", sep = "") , height = 6)
+  plot(famamod , 
+       which = 3 ,             # Skedastisitetsplot
+       sub.caption = "" ,      # Ingen sub.caption
+       #xlab = "Fittede værdier" ,
+       main = paste("Naiv portefølje - ",mns[m]," ",y,sep="" ) ) 
+  dev.off()
+}
+### (14) TEST -------------------------------------------------------
 betaSMB <- c()
 beta0 <- c()
-for(y in 2004){
-  for(m in 8){
+radjstock <- c()
+for(y in 1999:2009){
+  for(m in 6){
     int <- year(stock$date) == y & month(stock$date) == m 
+    int <- c(int , rep(FALSE , 70000))
     k <- length(stock$return[int])
     ds <- length( unique( day( stock$date[int] )  ) )
     h <- 1/(391*ds) * rep(1,k) # 1/(antal obs på måneden (391 * dage)) 
@@ -334,39 +539,38 @@ for(y in 2004){
     
     betaSMB <- c(betaSMB , as.numeric(famamod$coefficients[4]) )
     beta0 <- c(beta0 , summary(famamod)$coefficients[1,4])
+    radjstock <- c(radjstock , summary(famamod)$adj.r.squared)
   }
 }
 
-
-betaSMB <- c()
-beta0 <- c()
 
 pframe <- data.frame(pbeta0  = rep(10,132) ,
                      pSPY    = rep(10,132) ,
                      pHML    = rep(10,132) ,
                      pSMB    = rep(10,132)) ; head(pframe)
+radjport <- c()
 ppos <- 1
-for(y in 2004){
-  for(m in 8){
+for(y in 2008){
+  for(m in 6){
     int <- year(naiveport$date) == y & month(naiveport$date) == m
-    int <- c(int , rep(FALSE , 80)) # Fordi porteføljen er kortere
+    int <- c(int , rep(FALSE , 70000)) # Fordi porteføljen er kortere
     
     k <- length(naiveport$return[int])
     ds <- length( unique( day( naiveport$date[int] )  ) )
-    h <- 1/(79*ds) * rep(1,k) # 1/(antal obs på måneden (391 * dage)) 
+    h <- 1/(78*ds) * rep(1,k) # 1/(antal obs på måneden (391 * dage)) 
     
     famamod <- lm( naiveport$return[int] ~ h               +
                                            SPY$return[int] + 
                                            HML$return[int] + 
                                            SMB$return[int] -
                                            1)
-    
-    #betaSMB <- c(betaSMB , as.numeric(famamod$coefficients[4]) )
-    #beta0 <- c(beta0 , summary(famamod)$coefficients[1,4])
-    
+
     pframe[ppos,] <- as.numeric(summary(famamod)$coefficients[,4])
     ppos <- ppos + 1
-  }
+    radjport <- c(radjport , summary(famamod)$adj.r.squared )
+    print(m)
+    print(summary(famamod))
+    }
   print(y)
 }
 
@@ -381,3 +585,6 @@ summary(famamod)
 plot(famamod$residuals , pch = 20 , cex = 0.7 , col = "blue")
 
 
+plot(radjport , type = "l" , col = "blue" , ylim = c(0,1))
+lines(radjstock , type = "l" , col = "red")
+plot(radjport - radjstock , type = "l")
