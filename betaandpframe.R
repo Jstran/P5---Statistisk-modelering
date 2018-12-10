@@ -1,4 +1,4 @@
-### (1) Introting ---------------------------------------------------
+### (1)  Introting ---------------------------------------------------
 
 # Pakker
 library(openxlsx)
@@ -12,12 +12,12 @@ cldatdir <- "./p5dataclean"
 csvvec <- list.files(cldatdir , full.names = 1 , recursive = 0)
 snames <- substr(basename(csvvec),1,nchar(basename(csvvec))-5)
 
-### (2) Sampling frekvens -------------------------------------------
+### (2)  Sampling frekvens -------------------------------------------
 
 n <- 5
 priceseq <- seq(1,391,n)
 
-### (3) Specifik aktie indlæsning -----------------------------------
+### (3)  Specifik aktie indlæsning -----------------------------------
 # Kør først (1) og (2)
 
 # Valg af aktie
@@ -56,7 +56,7 @@ stock1  <- data.frame(date = datevec ,
                       return = c(0 , diff(log(pricevec)) ) )
 
 
-### (4) SPY indlæsning ----------------------------------------------
+### (4)  SPY indlæsning ----------------------------------------------
 # Kør først (1) og (2)
 
 # Valg af aktie
@@ -92,17 +92,15 @@ SPY1    <- data.frame(date = SPYdate ,
                       price = SPYprice ,
                       return = c(0 , diff(log(SPYprice)) ) )
 
-### (5) HML og SMB indlæsning ---------------------------------------
+### (5)  HML og SMB indlæsning ---------------------------------------
 
 # Mappe
 factdir <- "./factors"
 factcsv <- list.files(factdir , full.names = 1 , recursive = 0);factcsv
 
-
 # HML
 dat <- read.xlsx(factcsv[1])
 HML <- data.frame(date = ymd(dat$X1) , return = log(1 + dat$X3))
-#HML <- data.frame(date = ymd(dat$X1) , return = dat$X3 )
 HML <- HML[2:length(HML$return),]
 
 # Til at fjerne overnight return
@@ -112,11 +110,10 @@ HML <- HML[keep,]
 # SMB
 dat <- read.xlsx(factcsv[2])
 SMB <- data.frame(date = ymd(dat$X1) , return = log(1 + dat$X3))
-#SMB <- data.frame(date = ymd(dat$X1) , return = dat$X3 )
 SMB <- SMB[2:length(SMB$return),]
 SMB <- SMB[keep,]
 
-### (6) Betatabel (hele perioden) -----------------------------------
+### (6)  Betatabel (hele perioden) -----------------------------------
 # Kør først (1) , (2) , (4) og (5)
 
 ### Beta0 skæring , beta1 SPY , beta2 SMB , beta3 HML
@@ -159,7 +156,7 @@ for(k in 5:5){
 
 print(betaframe , digits = 3)
 
-### (7) P-vaerdi tabel (hele perioden) ------------------------------ 
+### (7)  P-vaerdi tabel (hele perioden) ------------------------------ 
 # Kør først (1) , (2) , (4) og (5)
 
 pframe <- data.frame(name    = snames ,
@@ -202,11 +199,11 @@ insignSPY <- snames[pframe$pSPY > 0.05] ; insignSPY
 insignSMB <- snames[pframe$pSMB > 0.05] ; insignSMB
 insignHML <- snames[pframe$pHML > 0.05] ; insignHML
 
-### (8) Naiv portefølje (5 min) -------------------------------------
+### (8)  Naiv portefølje (5 min) -------------------------------------
 # Kør først (1) og (2)
 
 # Laver naiv portefølje data.frame
-allstock <- data.frame(numeric(218434))
+allstock <- data.frame(numeric(218513))
 j <- 1
 datevec <- c()
 
@@ -217,7 +214,7 @@ for(k in (1:36)[!1:36 %in% 28]){ # Aktier uden SPY
   for(i in 1:(length(dat) - 1) ){
     pricevec <- c(pricevec , dat[priceseq , (i+1)] )
   }
-  if(k == 2){ # Korteste aktie
+  if(k == 1){ # Korteste aktie
     for(h in 1:(length(dat) - 1)){
       datevec  <- c(datevec , rep(names(dat)[(h+1)],(391 + n - 1)/n))  
       
@@ -225,17 +222,17 @@ for(k in (1:36)[!1:36 %in% 28]){ # Aktier uden SPY
     datevec <- ymd(substring(datevec,2))
   }
   
-  allstock[,j] <- diff(log(pricevec))[1:218434]
+  allstock[,j] <- diff(log(pricevec))
   names(allstock)[j] <- snames[k]
   j <- j + 1
   print(k)
 }
-naiveport <- data.frame(date = datevec[1:218434] ,
+naiveport <- data.frame(date = datevec[2:218514] ,
                         return = (1/35) * rowSums(allstock) )
 keep <- (1:length(naiveport[,1]))[!1:length(naiveport[,1]) %in% ((1:2766)*79)]
 naiveport <- naiveport[keep,]
 
-### (9) CAPM --------------------------------------------------------
+### (9)  CAPM --------------------------------------------------------
 # Kør først (1) , (2) og (4)
 
 # Forkorter SPY1 til at passe med korteste aktie
@@ -276,7 +273,7 @@ beta0 <- c()
 for(y in 1999:2009){
   for(m in 1:12){
     int <- year(naiveport$date) == y & month(naiveport$date) == m
-    int <- c(int , rep(FALSE , 80))
+    #int <- c(int , rep(FALSE , 80))
     
     famamod <- lm( naiveport$return[int] ~ SPY$return[int] +
                                            HML$return[int] +
@@ -296,7 +293,7 @@ rdate <- c("1999-01-04")
 for(y in 1999:2009){
   for(m in 1:12){
     int <- year(naiveport$date) == y & month(naiveport$date) == m 
-    int <- c(int , rep(FALSE , 80))
+    #int <- c(int , rep(FALSE , 80))
     
     capmmod <- lm(naiveport$return[int] ~ SPY$return[int])
     
@@ -327,7 +324,7 @@ mns <- c("januar" , "februar" , "marts" , "april" , "maj" ,
 for(y in c(2004 , 2008) ){
   m <- 6
   int <- year(stock$date) == y & month(stock$date) == m 
-  int <- c(int , rep(FALSE , 70000))
+  #int <- c(int , rep(FALSE , 70000))
   
   k <- length(stock$return[int])
   ds <- length( unique( day( stock$date[int] )  ) )
@@ -355,7 +352,7 @@ for(y in c(2004 , 2008) ){
 for(y in c(2004 , 2008) ){
   m <- 6
   int <- year(naiveport$date) == y & month(naiveport$date) == m
-  int <- c(int , rep(FALSE , 70000)) # Fordi porteføljen er kortere
+  #int <- c(int , rep(FALSE , 70000)) # Fordi porteføljen er kortere
     
   k <- length(naiveport$return[int])
   ds <- length( unique( day( naiveport$date[int] )  ) )
@@ -406,7 +403,7 @@ for(stockind in (1:36)[!1:36 %in% 28]){
   for(y in 1999:2009 ){
     for(m in 1:12){
       int <- year(stock$date) == y & month(stock$date) == m 
-      int <- c(int , rep(FALSE , 70000))
+      #int <- c(int , rep(FALSE , 70000))
     
       k <- length(stock$return[int])
       ds <- length( unique( day( stock$date[int] )  ) )
@@ -438,7 +435,7 @@ radj <- c()
 for(y in 1999:2009){
   for(m in 1:12){
     int <- year(naiveport$date) == y & month(naiveport$date) == m
-    int <- c(int , rep(FALSE , 70000)) # Fordi porteføljen er kortere
+    #int <- c(int , rep(FALSE , 70000)) # Fordi porteføljen er kortere
     
     k <- length(naiveport$return[int])
     ds <- length( unique( day( naiveport$date[int] )  ) )
@@ -474,7 +471,7 @@ mns <- c("januar" , "februar" , "marts" , "april" , "maj" ,
 for(y in c(2004 , 2008) ){
   m <- 6
   int <- year(stock$date) == y & month(stock$date) == m 
-  int <- c(int , rep(FALSE , 70000))
+  #int <- c(int , rep(FALSE , 70000))
   
   k <- length(stock$return[int])
   ds <- length( unique( day( stock$date[int] )  ) )
@@ -502,7 +499,7 @@ for(y in c(2004 , 2008) ){
 for(y in c(2004 , 2008) ){
   m <- 6
   int <- year(naiveport$date) == y & month(naiveport$date) == m
-  int <- c(int , rep(FALSE , 70000)) # Fordi porteføljen er kortere
+  #int <- c(int , rep(FALSE , 70000)) # Fordi porteføljen er kortere
   
   k <- length(naiveport$return[int])
   ds <- length( unique( day( naiveport$date[int] )  ) )
@@ -522,14 +519,192 @@ for(y in c(2004 , 2008) ){
        main = paste("Naiv portefølje - ",mns[m]," ",y,sep="" ) ) 
   dev.off()
 }
-### (14) TEST -------------------------------------------------------
+### (14) Cor mellem faktorer og residualer --------------------------
+# Kør først (1) , (2) , (3) , (4) , (5) og (8)
+corframe <- data.frame(SPY = numeric(9) , 
+                       HML = numeric(9) ,
+                       SMB = numeric(9))
+row.names(corframe)[7:9] <- c("Portefølje 2004" , "Portefølje 2008" ,
+                              "Portefølje Gns")
+
+# Aktie 1
+stockind   <- 7 ; print(csvvec[stockind])
+dat <- read.csv(csvvec[stockind])
+pricevec <- c()
+datevec  <- c()
+
+for(i in 1:(length(dat) - 1) ){
+  pricevec <- c(pricevec , dat[priceseq,(i+1)])
+  datevec  <- c(datevec , rep(names(dat)[(i+1)],(391 + n - 1)/n) )
+}
+datevec <- ymd(substring(datevec,2))
+stock   <- data.frame(date = datevec[2:length(datevec)] , 
+                      price = pricevec[2:length(pricevec)] ,
+                      return = diff(log(pricevec))  )
+keep <- (1:length(stock[,1]))[!1:length(stock[,1]) %in% ((1:2766)*79)]
+stock <- stock[keep,]
+row.names(corframe)[1:3] <- c(paste(snames[stockind] ," 2004" , sep = "") ,
+                              paste(snames[stockind] ," 2008" , sep = "") , 
+                              paste(snames[stockind] ," Gns" , sep =""))
+
+j <- 1
+cormeanSPY <- c()
+cormeanHML <- c()
+cormeanSMB <- c()
+for(y in 1999:2009 ){
+  for(m in 1:12){
+    int <- year(stock$date) == y & month(stock$date) == m 
+    #int <- c(int , rep(FALSE , 70000))
+    
+    k <- length(stock$return[int])
+    ds <- length( unique( day( stock$date[int] )  ) )
+    h <- 1/(78*ds) * rep(1,k) # 1/(antal obs på måneden (78 * dage)) 
+    
+    famamod <- lm( stock$return[int] ~ h               +
+                                       SPY$return[int] + 
+                                       HML$return[int] + 
+                                       SMB$return[int] -
+                                       1)
+    
+    cormeanSPY <- c(cormeanSPY , cor(famamod$residuals , SPY$return[int]))
+    cormeanHML <- c(cormeanHML , cor(famamod$residuals , HML$return[int]))
+    cormeanSMB <- c(cormeanSMB , cor(famamod$residuals , SMB$return[int]))
+    if(m == 6){
+      if(y == 2004){
+        corframe[j,] <- c( cor(famamod$residuals , SPY$return[int]) ,
+                           cor(famamod$residuals , HML$return[int]) ,
+                           cor(famamod$residuals , SMB$return[int]))
+        j <- j + 1
+      }
+      if(y == 2008){
+        corframe[j,] <- c( cor(famamod$residuals , SPY$return[int]) ,
+                           cor(famamod$residuals , HML$return[int]) ,
+                           cor(famamod$residuals , SMB$return[int]))
+        j <- j + 1
+      }
+    }
+  }
+}
+corframe[j,] <- c(mean(cormeanSPY) , 
+                  mean(cormeanHML) , 
+                  mean(cormeanSMB) )
+j <- j + 1
+
+
+
+# Aktie 2
+stockind   <- 24 ; print(csvvec[stockind])
+dat <- read.csv(csvvec[stockind])
+pricevec <- c()
+datevec  <- c()
+
+for(i in 1:(length(dat) - 1) ){
+  pricevec <- c(pricevec , dat[priceseq,(i+1)])
+  datevec  <- c(datevec , rep(names(dat)[(i+1)],(391 + n - 1)/n) )
+}
+datevec <- ymd(substring(datevec,2))
+stock   <- data.frame(date = datevec[2:length(datevec)] , 
+                      price = pricevec[2:length(pricevec)] ,
+                      return = diff(log(pricevec))  )
+keep <- (1:length(stock[,1]))[!1:length(stock[,1]) %in% ((1:2766)*79)]
+stock <- stock[keep,]
+row.names(corframe)[1:3] <- c(paste(snames[stockind] ," 2004" , sep = "") ,
+                              paste(snames[stockind] ," 2008" , sep = "") , 
+                              paste(snames[stockind] ," Gns" , sep =""))
+
+cormeanSPY <- c()
+cormeanHML <- c()
+cormeanSMB <- c()
+for(y in 1999:2009 ){
+  for(m in 1:12){
+    int <- year(stock$date) == y & month(stock$date) == m 
+    #int <- c(int , rep(FALSE , 70000))
+    
+    k <- length(stock$return[int])
+    ds <- length( unique( day( stock$date[int] )  ) )
+    h <- 1/(78*ds) * rep(1,k) # 1/(antal obs på måneden (78 * dage)) 
+    
+    famamod <- lm( stock$return[int] ~ h               +
+                                       SPY$return[int] + 
+                                       HML$return[int] + 
+                                       SMB$return[int] -
+                                       1)
+    
+    cormeanSPY <- c(cormeanSPY , cor(famamod$residuals , SPY$return[int]))
+    cormeanHML <- c(cormeanHML , cor(famamod$residuals , HML$return[int]))
+    cormeanSMB <- c(cormeanSMB , cor(famamod$residuals , SMB$return[int]))
+    if(m == 6){
+      if(y == 2004){
+        corframe[j,] <- c( cor(famamod$residuals , SPY$return[int]) ,
+                           cor(famamod$residuals , HML$return[int]) ,
+                           cor(famamod$residuals , SMB$return[int]))
+        j <- j + 1
+      }
+      if(y == 2008){
+        corframe[j,] <- c( cor(famamod$residuals , SPY$return[int]) ,
+                           cor(famamod$residuals , HML$return[int]) ,
+                           cor(famamod$residuals , SMB$return[int]))
+        j <- j + 1
+      }
+    }
+  }
+}
+corframe[j,] <- c(mean(cormeanSPY) , 
+                  mean(cormeanHML) , 
+                  mean(cormeanSMB) )
+j <- j + 1
+
+# Portefølje
+cormeanSPY <- c()
+cormeanHML <- c()
+cormeanSMB <- c()
+for(y in 1999:2009 ){
+  for(m in 1:12){
+    int <- year(naiveport$date) == y & month(naiveport$date) == m 
+    #int <- c(int , rep(FALSE , 70000))
+    
+    k <- length(naiveport$return[int])
+    ds <- length( unique( day( naiveport$date[int] )  ) )
+    h <- 1/(78*ds) * rep(1,k) # 1/(antal obs på måneden (78 * dage)) 
+    
+    famamod <- lm( naiveport$return[int] ~ h               +
+                                           SPY$return[int] + 
+                                           HML$return[int] + 
+                                           SMB$return[int] -
+                                           1)
+    
+    cormeanSPY <- c(cormeanSPY , cor(famamod$residuals , SPY$return[int]))
+    cormeanHML <- c(cormeanHML , cor(famamod$residuals , HML$return[int]))
+    cormeanSMB <- c(cormeanSMB , cor(famamod$residuals , SMB$return[int]))
+    if(m == 6){
+      if(y == 2004){
+        corframe[j,] <- c( cor(famamod$residuals , SPY$return[int]) ,
+                           cor(famamod$residuals , HML$return[int]) ,
+                           cor(famamod$residuals , SMB$return[int]))
+        j <- j + 1
+      }
+      if(y == 2008){
+        corframe[j,] <- c( cor(famamod$residuals , SPY$return[int]) ,
+                           cor(famamod$residuals , HML$return[int]) ,
+                           cor(famamod$residuals , SMB$return[int]))
+        j <- j + 1
+      }
+    }
+  }
+}
+corframe[j,] <- c(mean(cormeanSPY) , 
+                  mean(cormeanHML) , 
+                  mean(cormeanSMB) )
+print(corframe)
+
+### (15) TEST -------------------------------------------------------
 betaSMB <- c()
 beta0 <- c()
 radjstock <- c()
-for(y in 1999:2009){
-  for(m in 6){
+for(y in 1999){
+  for(m in 1){
     int <- year(stock$date) == y & month(stock$date) == m 
-    int <- c(int , rep(FALSE , 70000))
+    #int <- c(int , rep(FALSE , 70000))
     k <- length(stock$return[int])
     ds <- length( unique( day( stock$date[int] )  ) )
     h <- 1/(391*ds) * rep(1,k) # 1/(antal obs på måneden (391 * dage)) 
@@ -550,10 +725,10 @@ pframe <- data.frame(pbeta0  = rep(10,132) ,
                      pSMB    = rep(10,132)) ; head(pframe)
 radjport <- c()
 ppos <- 1
-for(y in 2008){
-  for(m in 6){
+for(y in 1999){
+  for(m in 1){
     int <- year(naiveport$date) == y & month(naiveport$date) == m
-    int <- c(int , rep(FALSE , 70000)) # Fordi porteføljen er kortere
+    #int <- c(int , rep(FALSE , 70000)) # Fordi porteføljen er kortere
     
     k <- length(naiveport$return[int])
     ds <- length( unique( day( naiveport$date[int] )  ) )
