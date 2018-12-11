@@ -21,7 +21,7 @@ priceseq <- seq(1,391,n)
 # Kør først (1) og (2)
 
 # Valg af aktie
-stockind   <- 1 ; print(csvvec[stockind])
+stockind   <- 7 ; print(csvvec[stockind])
 dat <- read.csv(csvvec[stockind])
 
 # (5 min)
@@ -314,7 +314,7 @@ plot(rfama - rcapm , type = "l" ,
                      ylab = "R^2 Differens (Fama - CAPM)")
 abline(h = 0)
 
-### (11) Residual plots ---------------------------------------------
+### (11) QQ residual plots ------------------------------------------
 # Kør først (1) , (2) , (4) , (5) og (8)
 mns <- c("januar" , "februar" , "marts" , "april" , "maj" ,
          "juni" , "juli" , "august" , "september" , "oktober" ,
@@ -369,7 +369,7 @@ for(y in c(2004 , 2008) ){
        which = 2 ,             # QQplot
        sub.caption = "" ,      # Ingen sub.caption
        xlab = "Teoretiske kvantiler" ,
-       main = paste("Naiv portefølje - ",mns[m]," ",y,sep="" ) ) 
+       main = paste("Portefølje - ",mns[m]," ",y,sep="" ) ) 
   dev.off()
 }
 
@@ -697,7 +697,57 @@ corframe[j,] <- c(mean(cormeanSPY) ,
                   mean(cormeanSMB) )
 print(corframe)
 
-### (15) TEST -------------------------------------------------------
+### (15) Residual plots ---------------------------------------------
+# Kør først (1) , (2) , (4) , (5) og (8)
+mns <- c("januar" , "februar" , "marts" , "april" , "maj" ,
+         "juni" , "juli" , "august" , "september" , "oktober" ,
+         "november" , "december")
+
+# Aktie model
+for(y in c(2004 , 2008) ){
+  m <- 6
+  int <- year(stock$date) == y & month(stock$date) == m 
+  
+  k <- length(stock$return[int])
+  ds <- length( unique( day( stock$date[int] )  ) )
+  h <- 1/(78*ds) * rep(1,k) # 1/(antal obs på måneden (78 * dage)) 
+  
+  famamod <- lm( stock$return[int] ~ h               +
+                                     SPY$return[int] + 
+                                     HML$return[int] + 
+                                     SMB$return[int] -
+                                     1)
+  
+  setEPS()
+  postscript( paste("resid",snames[stockind],y,0,m,".eps",sep = "") ,
+              height = 6)
+  plot(famamod$residuals , ylab = "Residualer" , xlab = "Indeks" ,
+       main = paste(snames[stockind]," - ",mns[m]," ",y,sep="" ) )
+  dev.off()
+}
+
+
+# Portefølje model
+for(y in c(2004 , 2008) ){
+  m <- 6
+  int <- year(naiveport$date) == y & month(naiveport$date) == m
+  
+  k <- length(naiveport$return[int])
+  ds <- length( unique( day( naiveport$date[int] )  ) )
+  h <- 1/(78*ds) * rep(1,k) # 1/(antal obs på måneden (78 * dage)) 
+  
+  famamod <- lm( naiveport$return[int] ~ h               +
+                                         SPY$return[int] + 
+                                         HML$return[int] + 
+                                         SMB$return[int] -
+                                         1)
+  setEPS()
+  postscript( paste("residport",y,0,m,".eps", sep = "") , height = 6)
+  plot(famamod$residuals , ylab = "Residualer" , xlab = "Indeks" ,
+       main = paste("Portefølje - ",mns[m]," ",y,sep="" ) ) 
+  dev.off()
+}
+### (16) TEST -------------------------------------------------------
 betaSMB <- c()
 beta0 <- c()
 radjstock <- c()

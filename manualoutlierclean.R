@@ -5,7 +5,7 @@ csvvec <- list.files(cldatdir , full.names = 1 , recursive = 0)
   sekvens <- seq(1,391,5)
   
   # for(k in 1:length(pricevec))
-  k <- 30
+  k <- 7 ; csvvec[k]
   dat <- read.csv(csvvec[k])
   pricevec <- c()
   datevec <- c()
@@ -17,8 +17,10 @@ csvvec <- list.files(cldatdir , full.names = 1 , recursive = 0)
   plot(pricevec , type = "l", main = basename(csvvec[k]))
   # dev.off()
   # }
-interval <- 1:length(pricevec)
-plot(pricevec[interval] , type = "l", main = basename(csvvec[k]))
+interval <- 150000:550000
+plot(pricevec[interval] , type = "l", 
+                          main = basename(csvvec[k]) ,
+                          col = "black")
 
 ## Minimum
 wrongplace <- which.min(pricevec[interval])
@@ -36,7 +38,7 @@ factors <- list.files("./factors",full.names = 1 , recursive = 0)
 faktorHML <- read.xlsx(factors[1])
 faktorSMB <- read.xlsx(factors[2])
 
-shift <- 500
+shift <- 505000 ; datevec[shift]
 n <- 30 # Sampling frequency
 RV <- c()
 for(j in n:1){
@@ -44,12 +46,12 @@ for(j in n:1){
 }
 
 
-setEPS()
-postscript("realiseretvol.eps", height = 4)
+#setEPS()
+#postscript("realiseretvol.eps", height = 4)
 plot((n:1) , RV , 
      xlab = "Observationsfrekvens" ,
      ylab = "Realiseret volatilitet")
-dev.off()
+#dev.off()
 
 
 plot(pricevec , type = "l")
