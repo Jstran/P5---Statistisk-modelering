@@ -84,84 +84,30 @@ SMB <- SMB[keep,]
 ### (8)  Naiv portefoelje (5 min) -------------------------------------
 
 # Laver naiv portefoelje data.frame
-allstock <- data.frame(numeric(218513))
+allstock <- data.frame(numeric(215748))
 j <- 1
 datevec <- c()
 
-for(k in (1:36)[!1:36 %in% 28]){ # Aktier uden SPY
-  dat <- read.csv(csvvec[k])
-  pricevec <- c()
+for(k in (1:length(snames))[-28]){ # Aktier uden SPY
   
-  for(i in 1:(length(dat) - 1) ){
-    pricevec <- c(pricevec , dat[priceseq , (i+1)] )
-  }
   if(k == 1){
+    dat <- read.csv(csvvec[k])
     for(h in 1:(length(dat) - 1)){
       datevec  <- c(datevec , rep(names(dat)[(h+1)], 79))  
       
     }
+    keep <- (1:length(datevec))[!1:length(datevec) %in% ((1:2766)*79)]
+    datevec <- (datevec[2:length(datevec)])[keep]
     datevec <- ymd(substring(datevec,2))
   }
   
-  allstock[,j] <- diff(log(pricevec))
+  allstock[,j] <- stockreader(k , onlyreturn = TRUE)
   names(allstock)[j] <- snames[k]
   j <- j + 1
   print(k)
 }
-naiveport <- data.frame(date = datevec[2:218514] ,
-                        return = (1/35) * rowSums(allstock) )
-keep <- (1:length(naiveport[,1]))[!1:length(naiveport[,1]) %in% ((1:2766)*79)]
-naiveport <- naiveport[keep,]
-
-
-
-# Laver naiv portefoelje data.frame
-allstock <- data.frame(numeric(218513))
-j <- 1
-datevec <- c()
-
-for(k in (1:36)[!1:36 %in% 28]){ # Aktier uden SPY
-  dat <- read.csv(csvvec[k])
-  pricevec <- c()
-  
-  for(i in 1:(length(dat) - 1) ){
-    pricevec <- c(pricevec , dat[priceseq , (i+1)] )
-  }
-  if(k == 1){
-    for(h in 1:(length(dat) - 1)){
-      datevec  <- c(datevec , rep(names(dat)[(h+1)], 79))  
-      
-    }
-    datevec <- ymd(substring(datevec,2))
-  }
-  
-  allstock[,j] <- diff(log(pricevec))
-  names(allstock)[j] <- snames[k]
-  j <- j + 1
-  print(k)
-}
-naiveport <- data.frame(date = datevec[2:218514] ,
-                        return = (1/35) * rowSums(allstock) )
-keep <- (1:length(naiveport[,1]))[!1:length(naiveport[,1]) %in% ((1:2766)*79)]
-naiveport <- naiveport[keep,]
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+naiveport <- data.frame(date   = datevec ,
+                        return = 1/35 * rowSums(allstock) )
 
 ### (11) QQ residual plots ------------------------------------------
 
@@ -169,6 +115,7 @@ mns <- c("januar" , "februar" , "marts" , "april" , "maj" ,
          "juni" , "juli" , "august" , "september" , "oktober" ,
          "november" , "december")
 
+stock <- stockreader(1) ; snames[1]
 # Aktie model
 for(y in c(2004 , 2008) ){
   m <- 6
@@ -227,22 +174,7 @@ j <- 1
 for(stockind in (1:length(snames))[-28]){
   
   radj <- c()
-  
-  dat <- read.csv(csvvec[stockind])
- 
-  pricevec <- c()
-  datevec  <- c()
-  
-  for(i in 1:(length(dat) - 1) ){
-    pricevec <- c(pricevec , dat[priceseq,(i+1)])
-    datevec  <- c(datevec , rep(names(dat)[(i+1)], 79) )
-  }
-  datevec <- ymd(substring(datevec,2))
-  stock   <- data.frame(date = datevec[2:length(datevec)] , 
-                        price = pricevec[2:length(pricevec)] ,
-                        return = diff(log(pricevec))  )
-  keep <- (1:length(stock[,1]))[!1:length(stock[,1]) %in% ((1:2766)*79)]
-  stock <- stock[keep,]
+  stock <- stockreader(stockind)
 
   for(y in 1999:2009 ){
     for(m in 1:12){
@@ -307,6 +239,7 @@ mns <- c("januar" , "februar" , "marts" , "april" , "maj" ,
          "juni" , "juli" , "august" , "september" , "oktober" ,
          "november" , "december")
 
+stock <- stockreader(7) ; snames[7]
 # Aktie model
 for(y in c(2004 , 2008) ){
   m <- 6
@@ -365,20 +298,8 @@ row.names(corframe)[7:9] <- c("Portefølje 2004" , "Portefølje 2008" ,
 
 # Aktie 1
 stockind   <- 7 ; print(csvvec[stockind])
-dat <- read.csv(csvvec[stockind])
-pricevec <- c()
-datevec  <- c()
+stock      <- stockreader(stockind)
 
-for(i in 1:(length(dat) - 1) ){
-  pricevec <- c(pricevec , dat[priceseq,(i+1)])
-  datevec  <- c(datevec , rep(names(dat)[(i+1)], 79) )
-}
-datevec <- ymd(substring(datevec,2))
-stock   <- data.frame(date = datevec[2:length(datevec)] , 
-                      price = pricevec[2:length(pricevec)] ,
-                      return = diff(log(pricevec))  )
-keep <- (1:length(stock[,1]))[!1:length(stock[,1]) %in% ((1:2766)*79)]
-stock <- stock[keep,]
 row.names(corframe)[1:3] <- c(paste(snames[stockind] ," 2004" , sep = "") ,
                               paste(snames[stockind] ," 2008" , sep = "") , 
                               paste(snames[stockind] ," Gns"  , sep = ""))
@@ -427,20 +348,7 @@ j <- j + 1
 
 # Aktie 2
 stockind   <- 24 ; print(csvvec[stockind])
-dat <- read.csv(csvvec[stockind])
-pricevec <- c()
-datevec  <- c()
-
-for(i in 1:(length(dat) - 1) ){
-  pricevec <- c(pricevec , dat[priceseq,(i+1)])
-  datevec  <- c(datevec , rep(names(dat)[(i+1)], 79) )
-}
-datevec <- ymd(substring(datevec,2))
-stock   <- data.frame(date = datevec[2:length(datevec)] , 
-                      price = pricevec[2:length(pricevec)] ,
-                      return = diff(log(pricevec))  )
-keep <- (1:length(stock[,1]))[!1:length(stock[,1]) %in% ((1:2766)*79)]
-stock <- stock[keep,]
+stock      <- stockreader(stockind)
 row.names(corframe)[4:6] <- c(paste(snames[stockind] ," 2004" , sep = "") ,
                               paste(snames[stockind] ," 2008" , sep = "") , 
                               paste(snames[stockind] ," Gns" , sep =""))
@@ -557,7 +465,7 @@ for(y in c(2004 , 2008) ){
   m <- 6
   int <- year(naiveport$date) == y & month(naiveport$date) == m
   k <- length(naiveport$return[int])
-  h <- 1/k * rep(1,k) # 1/(antal obs paa maaneden (78 * dage)) 
+  h <- 1/k * rep(1,k) 
   
   famamod <- lm( naiveport$return[int] ~ h               +
                                          SPY$return[int] + 
@@ -578,20 +486,7 @@ row.names(bppframe)[3] <- "Portefølje"
 
 # Aktie 1
 stockind   <- 7 ; print(csvvec[stockind])
-dat <- read.csv(csvvec[stockind])
-pricevec <- c()
-datevec  <- c()
-
-for(i in 1:(length(dat) - 1) ){
-  pricevec <- c(pricevec , dat[priceseq,(i+1)])
-  datevec  <- c(datevec , rep(names(dat)[(i+1)], 79) )
-}
-datevec <- ymd(substring(datevec,2))
-stock   <- data.frame(date = datevec[2:length(datevec)] , 
-                      price = pricevec[2:length(pricevec)] ,
-                      return = diff(log(pricevec))  )
-keep <- (1:length(stock[,1]))[!1:length(stock[,1]) %in% ((1:2766)*79)]
-stock <- stock[keep,]
+stock <- stockreader(stockind)
 
 j <- 1
 bpps <- c()
@@ -621,20 +516,7 @@ j <- j + 1
 
 # Aktie 2
 stockind   <- 24 ; print(csvvec[stockind])
-dat <- read.csv(csvvec[stockind])
-pricevec <- c()
-datevec  <- c()
-
-for(i in 1:(length(dat) - 1) ){
-  pricevec <- c(pricevec , dat[priceseq,(i+1)])
-  datevec  <- c(datevec , rep(names(dat)[(i+1)], 79) )
-}
-datevec <- ymd(substring(datevec,2))
-stock   <- data.frame(date = datevec[2:length(datevec)] , 
-                      price = pricevec[2:length(pricevec)] ,
-                      return = diff(log(pricevec))  )
-keep <- (1:length(stock[,1]))[!1:length(stock[,1]) %in% ((1:2766)*79)]
-stock <- stock[keep,]
+stock <- stockreader(stockind)
 
 bpps <- c()
 for(y in 1999:2009 ){
