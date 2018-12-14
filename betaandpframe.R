@@ -1,4 +1,4 @@
-### (1)  Introting ---------------------------------------------------
+### (1)  Intro ------------------------------------------------------
 
 # Pakker
 library(openxlsx)
@@ -13,6 +13,10 @@ cldatdir <- "./p5dataclean"
 csvvec <- list.files(cldatdir , full.names = 1 , recursive = 0)
 snames <- substr(basename(csvvec),1,nchar(basename(csvvec))-5)
 
+mns <- c("januar" , "februar" , "marts" , "april" , "maj" ,
+         "juni" , "juli" , "august" , "september" , "oktober" ,
+         "november" , "december")
+
 ### (2)  Sampling frekvens -------------------------------------------
 
 priceseq <- seq(1,391,5)
@@ -25,8 +29,9 @@ priceseq <- seq(1,391,5)
 stockreader <- function(stockind , onlyreturn = FALSE){
   
   pricevec <- c()
+  dat <- read.csv(csvvec[stockind])
+  
   if(onlyreturn == FALSE){
-    dat <- read.csv(csvvec[stockind])
     datevec  <- c()
     
     for(i in 1:(length(dat) - 1) ){
@@ -41,7 +46,6 @@ stockreader <- function(stockind , onlyreturn = FALSE){
     stock <- stock[keep,]
   }
   if(onlyreturn == TRUE){
-    dat <- read.csv(csvvec[stockind])
     
     for(i in 1:(length(dat) - 1) ){
       pricevec <- c(pricevec , dat[priceseq,(i+1)])
@@ -81,7 +85,7 @@ SMB <- data.frame(date = ymd(dat$X1) , return = log(1 + dat$X3))
 SMB <- SMB[2:length(SMB$return),]
 SMB <- SMB[keep,]
 
-### (8)  Naiv portefoelje (5 min) -------------------------------------
+### (6)  Naiv portefoelje (5 min) -------------------------------------
 
 # Laver naiv portefoelje data.frame
 allstock <- data.frame(numeric(215748))
@@ -107,63 +111,9 @@ for(k in (1:length(snames))[-28]){ # Aktier uden SPY
   print(k)
 }
 naiveport <- data.frame(date   = datevec ,
-                        return = 1/35 * rowSums(allstock) )
+                        return = 1/35 * rowSums( allstock ) )
 
-### (11) QQ residual plots ------------------------------------------
-
-mns <- c("januar" , "februar" , "marts" , "april" , "maj" ,
-         "juni" , "juli" , "august" , "september" , "oktober" ,
-         "november" , "december")
-
-stock <- stockreader(1) ; snames[1]
-# Aktie model
-for(y in c(2004 , 2008) ){
-  m <- 6
-  int <- year(stock$date) == y & month(stock$date) == m 
-  k <- length(stock$return[int])
-  h <- 1/k * rep(1,k) 
-  
-  famamod <- lm( stock$return[int] ~ h               +
-                                     SPY$return[int] + 
-                                     HML$return[int] + 
-                                     SMB$return[int] -
-                                     1)
-  
-  setEPS()
-  postscript( paste("qqresid",snames[stockind],y,0,m,".eps",sep = "") ,
-              height = 6)
-  plot(famamod , 
-       which = 2 ,             # QQplot
-       sub.caption = "" ,      # Ingen sub.caption
-       xlab = "Teoretiske kvantiler" ,
-       main = paste(snames[stockind]," - ",mns[m]," ",y,sep="" ) )
-  dev.off()
-}
-
-
-# Portefoelje model
-for(y in c(2004 , 2008) ){
-  m <- 6
-  int <- year(naiveport$date) == y & month(naiveport$date) == m
-  k <- length(naiveport$return[int])
-  h <- 1/k * rep(1,k)
-    
-  famamod <- lm( naiveport$return[int] ~ h               +
-                                         SPY$return[int] + 
-                                         HML$return[int] + 
-                                         SMB$return[int] -
-                                         1)
-  setEPS()
-  postscript( paste("qqresidport",y,0,m,".eps", sep = "") , height = 6)
-  plot(famamod , 
-       which = 2 ,             # QQplot
-       sub.caption = "" ,      # Ingen sub.caption
-       xlab = "Teoretiske kvantiler" ,
-       main = paste("Portefoelje - ",mns[m]," ",y,sep="" ) ) 
-  dev.off()
-}
-
-### (12) R^2 tabel --------------------------------------------------
+### (7)  R^2 tabel --------------------------------------------------
 
 radjframe <- data.frame(X2004 = rep(0,36) , 
                         X2008 = rep(0,36) , 
@@ -233,62 +183,7 @@ radjframe$Gns[j] <- mean(radj)
 }
 radjframe
 
-### (13) Skedastitetsplots ------------------------------------------
-
-mns <- c("januar" , "februar" , "marts" , "april" , "maj" ,
-         "juni" , "juli" , "august" , "september" , "oktober" ,
-         "november" , "december")
-
-stock <- stockreader(7) ; snames[7]
-# Aktie model
-for(y in c(2004 , 2008) ){
-  m <- 6
-  int <- year(stock$date) == y & month(stock$date) == m 
-  k <- length(stock$return[int])
-  h <- 1/k * rep(1,k) 
-  
-  famamod <- lm( stock$return[int] ~ h               +
-                                     SPY$return[int] + 
-                                     HML$return[int] + 
-                                     SMB$return[int] -
-                                     1)
-  
-  setEPS()
-  postscript( paste("skedaresid",snames[stockind],y,0,m,".eps",sep = "") ,
-              height = 6)
-  plot(famamod , 
-       which = 3 ,             # Skedastisitetsplot
-       sub.caption = "" ,      # Ingen sub.caption
-       #xlab = "Fittede værdier" ,
-       main = paste(snames[stockind]," - ",mns[m]," ",y,sep="" ) )
-  dev.off()
-}
-
-
-# Portefoelje model
-for(y in c(2004 , 2008) ){
-  m <- 6
-  int <- year(naiveport$date) == y & month(naiveport$date) == m
-  
-  
-  k <- length(naiveport$return[int])
-  h <- 1/k * rep(1,k)
-  
-  famamod <- lm( naiveport$return[int] ~ h               +
-                                         SPY$return[int] + 
-                                         HML$return[int] + 
-                                         SMB$return[int] -
-                                         1)
-  setEPS()
-  postscript( paste("skedaresidport",y,0,m,".eps", sep = "") , height = 6)
-  plot(famamod , 
-       which = 3 ,             # Skedastisitetsplot
-       sub.caption = "" ,      # Ingen sub.caption
-       #xlab = "Fittede værdier" ,
-       main = paste("Naiv portefølje - ",mns[m]," ",y,sep="" ) ) 
-  dev.off()
-}
-### (14) Cor mellem faktorer og residualer --------------------------
+### (8)  Cor mellem faktorer og residualer --------------------------
 
 corframe <- data.frame(SPY = numeric(9) , 
                        HML = numeric(9) ,
@@ -432,53 +327,7 @@ corframe[j,] <- c(mean(cormeanSPY) ,
                   mean(cormeanSMB) )
 print(corframe)
 
-### (15) Residual plots ---------------------------------------------
-
-mns <- c("januar" , "februar" , "marts" , "april" , "maj" ,
-         "juni" , "juli" , "august" , "september" , "oktober" ,
-         "november" , "december")
-
-# Aktie model
-for(y in c(2004 , 2008) ){
-  m <- 6
-  int <- year(stock$date) == y & month(stock$date) == m 
-  k <- length(stock$return[int])
-  h <- 1/k * rep(1,k)
-  
-  famamod <- lm( stock$return[int] ~ h               +
-                                     SPY$return[int] + 
-                                     HML$return[int] + 
-                                     SMB$return[int] -
-                                     1)
-  
-  setEPS()
-  postscript( paste("resid",snames[stockind],y,0,m,".eps",sep = "") ,
-              height = 6)
-  plot(famamod$residuals , ylab = "Residualer" , xlab = "Indeks" ,
-       main = paste(snames[stockind]," - ",mns[m]," ",y,sep="" ) )
-  dev.off()
-}
-
-
-# Portefoelje model
-for(y in c(2004 , 2008) ){
-  m <- 6
-  int <- year(naiveport$date) == y & month(naiveport$date) == m
-  k <- length(naiveport$return[int])
-  h <- 1/k * rep(1,k) 
-  
-  famamod <- lm( naiveport$return[int] ~ h               +
-                                         SPY$return[int] + 
-                                         HML$return[int] + 
-                                         SMB$return[int] -
-                                         1)
-  setEPS()
-  postscript( paste("residport",y,0,m,".eps", sep = "") , height = 6)
-  plot(famamod$residuals , ylab = "Residualer" , xlab = "Indeks" ,
-       main = paste("Portefølje - ",mns[m]," ",y,sep="" ) ) 
-  dev.off()
-}
-### (16) Breusch-Pagan tests ----------------------------------------
+### (9)  Breusch-Pagan tests ----------------------------------------
 
 bppframe <- data.frame(Pleq = numeric(3) , 
                        Pg   = numeric(3))
@@ -573,7 +422,7 @@ print(bppframe)
 #abline( h = 0.05 )
 #points((1:132)[bpps > 0.05] , bpps[bpps > 0.05] , col = "blue")
 
-### (17) R^2 Fama v CAPM5 v CAPM1 -----------------------------------
+### (10) R^2 Fama v CAPM5 v CAPM1 -----------------------------------
 
 rsqframe <- data.frame(X2004 = numeric(3) ,
                        X2008 = numeric(3) ,
@@ -695,110 +544,476 @@ lines(rsqcapm1 , col = "red")
 plot(rsqfama - rsqcapm5 , type = "l" , ylim = c(-0.1,0.3))
 abline( h = 0)
 
-### (18) DET VILDE VESTEN -------------------------------------------
+### (11) P-frame fra t-test ----------------------------------------
 
-betaSMB <- c()
-beta0 <- c()
-radjstock <- c()
-for(y in 1999){
-  for(m in 1){
-    int <- year(stock$date) == y & month(stock$date) == m 
-    
-    k <- length(stock$return[int])
-    ds <- length( unique( day( stock$date[int] )  ) )
-    h <- 1/(391*ds) * rep(1,k) # 1/(antal obs paa maaneden (391 * dage)) 
-    famamod <- lm( stock$return[int] ~ SPY$return[int] + 
-                                       HML$return[int] + 
-                                       SMB$return[int])
-    
-    betaSMB <- c(betaSMB , as.numeric(famamod$coefficients[4]) )
-    beta0 <- c(beta0 , summary(famamod)$coefficients[1,4])
-    radjstock <- c(radjstock , summary(famamod)$adj.r.squared)
-  }
-}
+pframe <- data.frame(pleq = numeric(3) ,
+                     pg   = numeric(3))
 
+j <- 1
+for(stockind in c(7,24)){
+  
+  stock <- stockreader(stockind) ; print(snames[stockind])
+  row.names(pframe)[j] <- snames[stockind]
+  pvals <- c()
+  
+  for(y in 1999:2009){
+    for(m in 1:12){
+      int <- year(stock$date) == y & month(stock$date) == m
+      k <- length(stock$return[int])
+      h <- 1/k * rep(1 , k)
+      
+      famamod   <- lm( stock$return[int]   ~ h               +
+                                             SPY$return[int] + 
+                                             HML$return[int] + 
+                                             SMB$return[int] -
+                                             1)
 
-pframe <- data.frame(pbeta0  = rep(10,132) ,
-                     pSPY    = rep(10,132) ,
-                     pHML    = rep(10,132) ,
-                     pSMB    = rep(10,132)) ; head(pframe)
-radjport <- c()
-bpport <- c()
-ppos <- 1
-for(y in 2004){
-  for(m in 6){
-    int <- year(naiveport$date) == y & month(naiveport$date) == m
-    
-    
-    k <- length(naiveport$return[int])
-    h <- 1/(78*ds) * rep(1,k) 
-    
-    famamod <- lm( naiveport$return[int] ~ h               +
-                                           SPY$return[int] + 
-                                           HML$return[int] + 
-                                           SMB$return[int] -
-                                           1)
-
-    pframe[ppos,] <- as.numeric(summary(famamod)$coefficients[,4])
-    ppos <- ppos + 1
-    radjport <- c(radjport , summary(famamod)$adj.r.squared )
-    #print(m)
-    bpport <- c(bpport , bptest(famamod)$p.value)
+      pvals <- c(pvals , summary(famamod)$coefficients[1,4])
     }
-  print(y)
+  }
+  pmns <- length(pvals[pvals <= 0.05])
+  pframe[j,] <- c(pmns , 132 - pmns)
+  j <- j + 1
 }
+pvals <- c()
 
-plot(bpport , col = "red")
-abline( h = 0.05 )
-points((1:132)[bpport > 0.05] , bpport[bpport > 0.05] , col = "blue")
-
-
-signbeta0 <- pframe$pbeta0[pframe$pbeta0 < 0.05] ; length(signbeta0)
-insignSPY <- pframe$pSPY[pframe$pSPY > 0.05] ; length(insignSPY)
-insignSMB <- pframe$pSMB[pframe$pSMB > 0.05] ; length(insignSMB)
-insignHML <- pframe$pHML[pframe$pHML > 0.05] ; length(insignHML)
-insignALL <- pframe$pSPY[pframe$pSPY > 0.05 &
-                         pframe$pSMB > 0.05 &
-                         pframe$pHML > 0.05] ; length(insignALL)
-summary(famamod)
-plot(famamod$residuals , pch = 20 , cex = 0.7 , col = "blue")
-
-
-plot(radjport , type = "l" , col = "blue" , ylim = c(0,1))
-lines(radjstock , type = "l" , col = "red")
-plot(radjport - radjstock , type = "l")
-
-
-
-
-for(y in 2005){
-  for(m in 1){
+for(y in 1999:2009){
+  for(m in 1:12){
     int <- year(naiveport$date) == y & month(naiveport$date) == m
     k <- length(naiveport$return[int])
     h <- 1/k * rep(1 , k)
     
-    famamodint <- lm( naiveport$return[int]   ~ h               +
-                                                SPY$return[int] + 
-                                                HML$return[int] + 
-                                                SMB$return[int] -
-                                                1)
-    famamodnoint <- lm( naiveport$return[int] ~ SPY$return[int] +
-                                                HML$return[int] + 
-                                                SMB$return[int] -
-                                                1)
+    famamod   <- lm( naiveport$return[int]   ~ h               +
+                                               SPY$return[int] + 
+                                               HML$return[int] + 
+                                               SMB$return[int] -
+                                               1)
     
-    anova(famamodint , famamodnoint)
+    pvals <- c(pvals , summary(famamod)$coefficients[1,4])
   }
 }
-plot(famamodint , which = 4)
-plot(famamodint , which = 5)
-plot(famamodint , which = 6)
+pmns <- length(pvals[pvals <= 0.05])
+pframe[j,] <- c(pmns , 132 - pmns)
+row.names(pframe)[j] <- "Portefølje"
+print(pframe)
 
 
+### (12) D-frame fra dwtest -----------------------------------------
 
-y <- 2
-testfunc <- function(x){
-  x <- x + y
-  return(x)
+dframe <- data.frame(dinint      = numeric(3) ,
+                     dnotinint   = numeric(3))
+dupper <- 2.2
+dlower <- 1.8
+
+j <- 1
+for(stockind in c(7 , 24)){
+  
+  stock <- stockreader(stockind) ; print(snames[stockind])
+  row.names(dframe)[j] <- snames[stockind]
+  pvals <- c()
+  dvals <- c()
+  
+  for(y in 1999:2009){
+    for(m in 1:12){
+      int <- year(stock$date) == y & month(stock$date) == m
+      k <- length(stock$return[int])
+      h <- 1/k * rep(1 , k)
+      
+      famamod   <- lm( stock$return[int]   ~ h               +
+                                             SPY$return[int] + 
+                                             HML$return[int] + 
+                                             SMB$return[int] -
+                                             1)
+      
+      pvals <- c(pvals , dwtest(famamod)$p.value )
+      dvals <- c(dvals , as.numeric(dwtest(famamod)$statistic )) 
+    }
+  }
+  dint <- (dvals <= dupper & dvals >= dlower)
+  dmns <- length(dvals[dint])
+  dframe[j,] <- c(dmns , 132 - dmns)
+  j <- j + 1
 }
-testfunc(4)
+
+pvals <- c()
+dvals <- c()
+for(y in 1999:2009){
+  for(m in 1:12){
+    int <- year(naiveport$date) == y & month(naiveport$date) == m
+    k <- length(naiveport$return[int])
+    h <- 1/k * rep(1 , k)
+    
+    famamod   <- lm( naiveport$return[int]   ~ h               +
+                                               SPY$return[int] + 
+                                               HML$return[int] + 
+                                               SMB$return[int] -
+                                               1)
+                            
+    pvals <- c(pvals , dwtest(famamod)$p.value)
+    dvals <- c(dvals , as.numeric(dwtest(famamod)$statistic )) 
+  }
+}
+dint <- (dvals <= dupper & dvals >= dlower)
+dmns <- length(dvals[dint])
+dframe[j,] <- c(dmns , 132 - dmns)
+row.names(dframe)[j] <- "Portefølje"
+print(dframe)
+
+plot(pvals)
+points((1:132)[pvals <= 0.05] , pvals[pvals <= 0.05] ,col = "red")
+abline( h = 0.05 )
+
+plot(dvals , ylim = c(1.2 , 2.8) , col = "red")
+points((1:132)[dint] , dvals[dint] ,col = "black")
+abline( h = dlower )
+abline( h = dupper )
+
+### (13) R^2 for enkelte faktorer -----------------------------------
+
+rframe <- data.frame(X2004 = numeric(3) ,
+                     X2008 = numeric(3) ,
+                     Gns   = numeric(3))
+row.names(rframe) <- c("SPY" , "HML" , "SMB") ; rframe
+
+rSPY <- rHML <- rSMB <- c()
+for(y in 1999:2009){
+  for(m in 1:12){
+    int <- year(naiveport$date) == y & month(naiveport$date) == m
+    k <- length(naiveport$return[int])
+    h <- 1/k * rep(1 , k)
+    
+    SPYmod <- lm( SPY$return[int] ~ h + HML$return[int] +
+                                    SMB$return[int] - 1) 
+    
+    HMLmod <- lm( HML$return[int] ~ h + SPY$return[int] +
+                                    SMB$return[int] - 1)
+    
+    SMBmod <- lm( SMB$return[int] ~ h + SPY$return[int] +
+                                    HML$return[int] - 1)
+    
+    rSPY <- c(rSPY , summary(SPYmod)$adj.r.squared)
+    rHML <- c(rHML , summary(HMLmod)$adj.r.squared)
+    rSMB <- c(rSMB , summary(SMBmod)$adj.r.squared) 
+  }
+}
+rframe[1,] <- c(rSPY[66] , rSPY[114] , mean(rSPY))
+rframe[2,] <- c(rHML[66] , rHML[114] , mean(rHML))
+rframe[3,] <- c(rSMB[66] , rSMB[114] , mean(rSMB))
+print(rframe)
+### (14) QQ residual plots ------------------------------------------
+
+stock <- stockreader(1) ; snames[1]
+# Aktie model
+for(y in c(2004 , 2008) ){
+  m <- 6
+  int <- year(stock$date) == y & month(stock$date) == m 
+  k <- length(stock$return[int])
+  h <- 1/k * rep(1,k) 
+  
+  famamod <- lm( stock$return[int] ~ h               +
+                                     SPY$return[int] + 
+                                     HML$return[int] + 
+                                     SMB$return[int] -
+                                     1)
+  
+  setEPS()
+  postscript( paste("qqresid",snames[stockind],y,0,m,".eps",sep = "") ,
+              height = 6)
+  plot(famamod , 
+       which = 2 ,             # QQplot
+       sub.caption = "" ,      # Ingen sub.caption
+       xlab = "Teoretiske kvantiler" ,
+       main = paste(snames[stockind]," - ",mns[m]," ",y,sep="" ) )
+  dev.off()
+}
+
+
+# Portefoelje model
+for(y in c(2004 , 2008) ){
+  m <- 6
+  int <- year(naiveport$date) == y & month(naiveport$date) == m
+  k <- length(naiveport$return[int])
+  h <- 1/k * rep(1,k)
+    
+  famamod <- lm( naiveport$return[int] ~ h               +
+                                         SPY$return[int] + 
+                                         HML$return[int] + 
+                                         SMB$return[int] -
+                                         1)
+  setEPS()
+  postscript( paste("qqresidport",y,0,m,".eps", sep = "") , height = 6)
+  plot(famamod , 
+       which = 2 ,             # QQplot
+       sub.caption = "" ,      # Ingen sub.caption
+       xlab = "Teoretiske kvantiler" ,
+       main = paste("Portefoelje - ",mns[m]," ",y,sep="" ) ) 
+  dev.off()
+}
+
+### (15) Skedastitetsplots ------------------------------------------
+
+stockind <- 7
+stock <- stockreader(stockind) ; snames[stockind]
+# Aktie model
+for(y in c(2004 , 2008) ){
+  m <- 6
+  int <- year(stock$date) == y & month(stock$date) == m 
+  k <- length(stock$return[int])
+  h <- 1/k * rep(1,k) 
+  
+  famamod <- lm( stock$return[int] ~ h               +
+                                     SPY$return[int] + 
+                                     HML$return[int] + 
+                                     SMB$return[int] -
+                                     1)
+  
+  setEPS()
+  postscript( paste("skedaresid",snames[stockind],y,0,m,".eps",sep = "") ,
+              height = 6)
+  plot(famamod , 
+       which = 1 ,             # Skedastisitetsplot
+       sub.caption = "" ,      # Ingen sub.caption
+       #xlab = "Fittede værdier" ,
+       main = paste(snames[stockind]," - ",mns[m]," ",y,sep="" ) )
+  dev.off()
+}
+
+
+# Portefoelje model
+for(y in c(2004 , 2008) ){
+  m <- 6
+  int <- year(naiveport$date) == y & month(naiveport$date) == m
+  
+  
+  k <- length(naiveport$return[int])
+  h <- 1/k * rep(1,k)
+  
+  famamod <- lm( naiveport$return[int] ~ h               +
+                                         SPY$return[int] + 
+                                         HML$return[int] + 
+                                         SMB$return[int] -
+                                         1)
+  setEPS()
+  postscript( paste("skedaresidport",y,0,m,".eps", sep = "") , height = 6)
+  plot(famamod , 
+       which = 1 ,             # Skedastisitetsplot
+       sub.caption = "" ,      # Ingen sub.caption
+       #xlab = "Fittede værdier" ,
+       main = paste("Portefølje - ",mns[m]," ",y,sep="" ) ) 
+  dev.off()
+}
+### (16) Residual plots ---------------------------------------------
+
+# Aktie model
+for(y in c(2004 , 2008) ){
+  m <- 6
+  int <- year(stock$date) == y & month(stock$date) == m 
+  k <- length(stock$return[int])
+  h <- 1/k * rep(1,k)
+  
+  famamod <- lm( stock$return[int] ~ h               +
+                                     SPY$return[int] + 
+                                     HML$return[int] + 
+                                     SMB$return[int] -
+                                     1)
+  
+  setEPS()
+  postscript( paste("resid",snames[stockind],y,0,m,".eps",sep = "") ,
+              height = 6)
+  plot(famamod$residuals , ylab = "Residualer" , xlab = "Indeks" ,
+       main = paste(snames[stockind]," - ",mns[m]," ",y,sep="" ) )
+  dev.off()
+}
+
+
+# Portefoelje model
+for(y in c(2004 , 2008) ){
+  m <- 6
+  int <- year(naiveport$date) == y & month(naiveport$date) == m
+  k <- length(naiveport$return[int])
+  h <- 1/k * rep(1,k) 
+  
+  famamod <- lm( naiveport$return[int] ~ h               +
+                                         SPY$return[int] + 
+                                         HML$return[int] + 
+                                         SMB$return[int] -
+                                         1)
+  setEPS()
+  postscript( paste("residport",y,0,m,".eps", sep = "") , height = 6)
+  plot(famamod$residuals , ylab = "Residualer" , xlab = "Indeks" ,
+       main = paste("Portefølje - ",mns[m]," ",y,sep="" ) ) 
+  dev.off()
+}
+### (17) Residual hist mod norm -------------------------------------
+
+y <- 2008
+m <- 6
+int <- year(naiveport$date) == y & month(naiveport$date) == m
+k <- length(naiveport$return[int])
+h <- 1/k * rep(1 , k)
+
+famamod <- lm( naiveport$return[int]   ~ h               +
+                                         SPY$return[int] + 
+                                         HML$return[int] + 
+                                         SMB$return[int] -
+                                         1)
+setEPS()
+postscript( paste("residhistnorm",".eps",sep = "") , height = 6)
+
+x <- seq(-0.006, 0.006, length=100)
+hist(famamod$residuals , probability = TRUE , breaks = 100 ,
+     xlim = c(-0.005 , 0.005) , 
+     main = paste("Portefølje - ",mns[m]," ",y,sep="") ,
+     xlab = "Residualer" , ylab = "Sandsynlighed")
+lines(x , dnorm(x , mean = 0 , sd = 0.00076 ) ,lty = 2 , lwd = 1 )
+
+dev.off()
+
+### (18) Chi-i-anden plot med forskellige df ------------------------
+
+x <- seq(0, 15, length=100)
+degf <- c(3,5,7,10)
+
+colors <- c("chartreuse4", 
+            "royalblue4", 
+            "firebrick4", 
+            "darkorchid4")
+
+labels <- c(paste("df = " , degf[1] , sep = "") ,
+            paste("df = " , degf[2] , sep = "") ,
+            paste("df = " , degf[3] , sep = "") ,
+            expression(italic(df) == degf~4 ))
+
+setEPS()
+postscript( paste("chisqdist",".eps",sep = "") , height = 6)
+
+plot(x, dchisq(x,degf[1]), type="l", col = colors[1], 
+     xlab=expression(italic("x")), lwd=2 , 
+     ylab=expression(italic("P(x)")), main="")
+
+for (i in 2:length(degf)){
+  lines(x, dchisq(x,degf[i]), lwd=2, col=colors[i])
+}
+
+legend("topright", inset=.05, title="Frihedsgrader",
+       labels, lwd=2, col=colors , bty="n")
+
+dev.off()
+
+
+
+### (19) t-fordeling plot med forskellige df ------------------------
+
+x <- seq(-4, 4, length=100)
+hx <- dnorm(x)
+
+degf <- c(1, 3, 8, 20)
+colors <- c("darkorchid4", 
+            "firebrick4" ,
+            "royalblue4" ,
+            "chartreuse4",
+            "black")
+
+labels <- c(paste("df = " , degf[1] , sep = "") ,
+            paste("df = " , degf[2] , sep = "") ,
+            paste("df = " , degf[3] , sep = "") ,
+            paste("df = " , degf[3] , sep = "") ,
+            "normal")
+
+setEPS()
+postscript( paste("tnormdist",".eps",sep = "") , height = 6)
+
+plot(x, hx, type="l", lty=2, xlab=expression(italic("x")),
+     ylab=expression(italic("P(x)")), main="")
+
+for (i in 1:4){
+  lines(x, dt(x,degf[i]), lwd=2, col=colors[i])
+}
+
+legend("topright", inset=.05, title="Fordelinger",
+       labels, lwd=2, lty=c(1, 1, 1, 1, 2), col=colors , bty = "n")
+
+dev.off()
+
+### (20) F-fordeling plot med forskellige df ------------------------
+
+x <- seq(0, 4, length=100)
+degf1 <- c(3,5,7,10)
+degf2 <- c(5,7,10,15)
+colors <- c("chartreuse4", 
+            "royalblue4", 
+            "firebrick4", 
+            "darkorchid4")
+
+labels <- c(paste("df = ",degf1[1]," , ","df = ",degf2[1], sep = "") ,
+            paste("df = ",degf1[2]," , ","df = ",degf2[2], sep = "") ,
+            paste("df = ",degf1[3]," , ","df = ",degf2[3], sep = "") ,
+            paste("df = ",degf1[4]," , ","df = ",degf2[4], sep = "") )
+
+setEPS()
+postscript( paste("fdist",".eps",sep = "") , height = 6)
+
+plot(x, df(x,degf1[1],degf2[1]), type="l", col = colors[1], 
+     xlab=expression(italic("x")), lwd=2 , 
+     ylab=expression(italic("P(x)")), main="",ylim = c(0,0.85))
+
+for (i in 2:length(degf)){
+  lines(x, df(x,degf1[i],degf2[i]), lwd=2, col=colors[i])
+}
+
+legend("topright", inset=.05, title="Frihedsgrader",
+       labels, lwd=2, col=colors , bty="n")
+
+dev.off()
+
+
+### (21) DET VILDE VESTEN -------------------------------------------
+
+pfromsum <- c()
+pfromwald <- c()
+for(y in 2004){
+  for(m in 6){
+    int <- year(naiveport$date) == y & month(naiveport$date) == m
+    k <- length(naiveport$return[int])
+    h <- 1/k * rep(1 , k)
+    
+    famamodint   <- lm( naiveport$return[int]   ~ h               +
+                                                  SPY$return[int] + 
+                                                  HML$return[int] + 
+                                                  SMB$return[int] -
+                                                  1)
+    famamodnoint <- lm( naiveport$return[int]   ~ SPY$return[int] + 
+                                                  HML$return[int] + 
+                                                  SMB$return[int] -
+                                                  1)
+    pfromsum  <- c(pfromsum , summary(famamodint)$coefficients[1,4])
+    pfromwald <- c(pfromwald , 
+                   waldtest(famamodint , famamodnoint)$`Pr(>F)`[2])
+  }
+}
+summary(famamodint)
+summary(famamodnoint)
+waldtest(famamodint , famamodnoint)
+waldtest(famamodnoint , famamodint)
+
+
+
+for(y in 2008){ 
+  for(m in 6){
+    int <- year(naiveport$date) == y & month(naiveport$date) == m
+    k <- length(naiveport$return[int])
+    h <- 1/k * rep(1 , k)
+    
+    famamod   <- lm( naiveport$return[int]   ~ h               +
+                                               SPY$return[int] + 
+                                               HML$return[int] + 
+                                               SMB$return[int] -
+                                               1)
+  }
+}
+summary(famamod)
+dwtest(famamod)
+
+T = summary(famamodint)$coefficients[1,1]/
+    summary(famamodint)$coefficients[1,2]
+pt(T , 1712)
